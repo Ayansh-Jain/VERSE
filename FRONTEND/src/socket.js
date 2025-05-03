@@ -2,7 +2,7 @@
 import { io } from "socket.io-client";
 
 const SOCKET_SERVER_URL =
-  import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:3000";
+  import.meta.env.VITE_SOCKET_SERVER_URL || "https://verse-48io.onrender.com";
 
 const socket = io(SOCKET_SERVER_URL, {
   // ensure the browser will send the HTTP-only cookie along with the handshake
