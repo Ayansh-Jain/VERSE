@@ -45,7 +45,7 @@ app.use("/api/polls", pollRoutes);
 const server = http.createServer(app);
 const io = new SocketIO(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "https://verse-frontend.onrender.com",
     credentials: true,
   },
   transports: ["websocket", "polling"],
