@@ -1,5 +1,4 @@
 import express from "express";
-import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -9,12 +8,11 @@ import cookie from "cookie";
 import jwt from "jsonwebtoken";
 import { Server as SocketIO } from "socket.io";
 
+import connectDB from "./db/connectDB.js";
 import userRoutes from "./routes/userRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import pollRoutes from "./routes/pollRoutes.js";
-import Message from "./Models/messageModel.js";
-import connectDB from "./db/connectDB.js";
 
 dotenv.config();
 connectDB();
@@ -25,32 +23,35 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: process.env.CLIENT_URL,   // e.g. "https://verse-frontend.onrender.com"
   credentials: true,
 }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Static files
+// Static uploads
 app.use("/uploads", express.static("public/uploads"));
 
-// API Routes
+// Routes
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/polls", pollRoutes);
 
-// Create HTTP server & Socket.IO instance
+// HTTP + Socket.IO bootstrap (no changes here beyond CORS above)
+// …
+
 const server = http.createServer(app);
 const io = new SocketIO(server, {
   cors: {
-    origin: "https://verse-frontend.onrender.com",
+    origin: process.env.CLIENT_URL,
     credentials: true,
   },
   transports: ["websocket", "polling"],
 });
 
+// … your socket auth + handlers …
 const onlineUsers = new Map();
 
 // NEW cookie‑based authentication for sockets

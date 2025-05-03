@@ -1,14 +1,6 @@
 import mongoose from "mongoose";
 import Challenge from "../Models/challengeModel.js";
 import User from "../Models/userModel.js";
-
-/**
- * Create a new challenge.
- * - Checks if both users have reached their daily limit (3 challenges).
- * - Searches for an opponent with similar versePoints.
- * - Deducts versePoints from both users.
- * - Returns the remaining attempts.
- */
 export const startChallenge = async (req, res) => {
   try {
     let { skill } = req.body;
