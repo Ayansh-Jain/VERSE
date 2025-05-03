@@ -9,7 +9,7 @@ const SignUp = () => {
     username: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
   const [errorMessages, setErrorMessages] = useState([]);
   const [successMessage, setSuccessMessage] = useState("");
@@ -17,9 +17,23 @@ const SignUp = () => {
   const navigate = useNavigate();
   const { setUser } = useAuth();
 
+  const safeJson = async (res) => {
+    const text = await res.text();
+    if (text) {
+      try {
+        return JSON.parse(text);
+      } catch (err) {
+        console.error(err);
+        console.error("Invalid JSON:", text);
+        return { raw: text };
+      }
+    }
+    return {};
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((p) => ({ ...p, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -35,7 +49,7 @@ const SignUp = () => {
     if (formData.password !== formData.confirmPassword) {
       errors.push("Passwords do not match!");
     }
-    if (errors.length > 0) {
+    if (errors.length) {
       setErrorMessages(errors);
       setLoading(false);
       return;
@@ -48,11 +62,13 @@ const SignUp = () => {
         body: JSON.stringify({
           username: formData.username,
           email: formData.email,
-          password: formData.password
+          password: formData.password,
         }),
-        credentials: "include"
+        credentials: "include",
       });
-      const data = await res.json();
+      const data = await safeJson(res);
+      console.log("SIGNUP RAW:", data);
+
       if (res.ok) {
         setSuccessMessage("Sign-up successful! Redirecting...");
         const userWithTime = { ...data, loginTime: Date.now() };
@@ -63,9 +79,10 @@ const SignUp = () => {
       } else {
         setErrorMessages([data.message || "Something went wrong."]);
       }
-    } catch (error) {
-      setErrorMessages([error.message || "An error occurred."]);
+    } catch (err) {
+      setErrorMessages([err.message || "An error occurred."]);
     }
+
     setLoading(false);
   };
 
@@ -76,61 +93,65 @@ const SignUp = () => {
         <form className="signup-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="username">Username</label>
-            <input 
-              type="text" 
+            <input
               name="username"
-              id="username" 
-              placeholder="Enter your username" 
-              value={formData.username} 
-              onChange={handleChange} 
-              required 
+              id="username"
+              type="text"
+              placeholder="Enter your username"
+              value={formData.username}
+              onChange={handleChange}
+              required
             />
           </div>
           <div className="form-group">
             <label htmlFor="email">Email</label>
-            <input 
-              type="email" 
+            <input
               name="email"
-              id="email" 
-              placeholder="Enter your email" 
-              value={formData.email} 
-              onChange={handleChange} 
-              required 
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={formData.email}
+              onChange={handleChange}
+              required
             />
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input 
-              type="password" 
+            <input
               name="password"
-              id="password" 
-              placeholder="Enter your password" 
-              value={formData.password} 
-              onChange={handleChange} 
-              required 
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              value={formData.password}
+              onChange={handleChange}
+              required
             />
           </div>
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm Password</label>
-            <input 
-              type="password" 
+            <input
               name="confirmPassword"
-              id="confirmPassword" 
-              placeholder="Confirm your password" 
-              value={formData.confirmPassword} 
-              onChange={handleChange} 
-              required 
+              id="confirmPassword"
+              type="password"
+              placeholder="Confirm your password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
             />
           </div>
           {errorMessages.length > 0 && (
             <div className="error-messages">
-              {errorMessages.map((error, index) => (
-                <p key={index} className="error">{error}</p>
+              {errorMessages.map((e, i) => (
+                <p key={i} className="error">{e}</p>
               ))}
             </div>
           )}
           {successMessage && <p className="success">{successMessage}</p>}
-          <button type="submit" className="signup-btn" disabled={loading}>
+          <button
+            type="submit"
+            className="signup-btn"
+            disabled={loading}
+          >
             {loading ? "Signing up..." : "Sign Up"}
           </button>
           <p className="redirect">

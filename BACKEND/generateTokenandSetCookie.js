@@ -1,3 +1,4 @@
+// src/generateTokenAndSetCookie.js
 import jwt from "jsonwebtoken";
 
 const generateTokenAndSetCookie = (userId, res) => {
@@ -5,14 +6,12 @@ const generateTokenAndSetCookie = (userId, res) => {
     const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
       expiresIn: "20d",
     });
-
     res.cookie("jwt", token, {
       httpOnly: true,
       maxAge: 20 * 24 * 60 * 60 * 1000,
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      secure: process.env.NODE_ENV === "production", // must be HTTPS in production
+      secure: process.env.NODE_ENV === "production",
     });
-
     return token;
   } catch (error) {
     console.error("Error generating token:", error.message);

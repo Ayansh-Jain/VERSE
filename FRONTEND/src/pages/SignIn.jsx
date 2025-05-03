@@ -12,9 +12,22 @@ const SignIn = () => {
   const navigate = useNavigate();
   const { setUser } = useAuth();
 
-  const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }));
+  const safeJson = async (res) => {
+    const text = await res.text();
+    if (text) {
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error("safeJson parse error:", e, "Raw response:", text);
+        console.error("Invalid JSON:", text);
+        return { raw: text };
+      }
+    }
+    return {};
   };
+
+  const handleChange = (e) =>
+    setFormData((p) => ({ ...p, [e.target.id]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,13 +46,13 @@ const SignIn = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
-        credentials: "include"
+        credentials: "include",
       });
-      const data = await res.json();
-      console.log("Returned data:", data);
+      const data = await safeJson(res);
+      console.log("LOGIN RAW:", data);
+
       if (res.ok) {
         setSuccessMessage("Sign-in successful! Redirecting...");
-        // Add a login timestamp
         const userWithTime = { ...data, loginTime: Date.now() };
         localStorage.setItem("user-verse", JSON.stringify(userWithTime));
         localStorage.setItem("lastLogin", Date.now().toString());
@@ -48,9 +61,10 @@ const SignIn = () => {
       } else {
         setErrorMessages([data.message || "Something went wrong."]);
       }
-    } catch (error) {
-      setErrorMessages([error.message || "An error occurred."]);
+    } catch (err) {
+      setErrorMessages([err.message || "An error occurred."]);
     }
+
     setLoading(false);
   };
 
@@ -61,40 +75,46 @@ const SignIn = () => {
         <form className="signup-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email</label>
-            <input 
-              type="email" 
-              id="email" 
-              placeholder="Enter your email" 
-              value={formData.email} 
-              onChange={handleChange} 
-              required 
+            <input
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={formData.email}
+              onChange={handleChange}
+              required
               autoComplete="email"
             />
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input 
-              type="password" 
-              id="password" 
-              placeholder="Enter your password" 
-              value={formData.password} 
-              onChange={handleChange} 
-              required 
+            <input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              value={formData.password}
+              onChange={handleChange}
+              required
               autoComplete="current-password"
             />
           </div>
           {errorMessages.length > 0 && (
             <div className="error-messages">
-              {errorMessages.map((error, index) => (
-                <p key={index} className="error">{error}</p>
+              {errorMessages.map((e, i) => (
+                <p key={i} className="error">{e}</p>
               ))}
             </div>
           )}
           {successMessage && <p className="success">{successMessage}</p>}
-          <button type="submit" className="signup-btn">{loading ? "Signing In..." : "Sign In"}</button>
+          <button
+            type="submit"
+            className="signup-btn"
+            disabled={loading}
+          >
+            {loading ? "Signing in..." : "Sign In"}
+          </button>
         </form>
         <p className="redirect">
-          Do not have an account? <Link to="/signup">Sign Up</Link>
+          Dont have an account? <Link to="/signup">Sign Up</Link>
         </p>
       </div>
     </div>

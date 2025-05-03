@@ -1,8 +1,9 @@
+// src/index.js  (your main server entrypoint)
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import http from "http";
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
@@ -20,12 +21,14 @@ connectDB();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Security & CORS
 app.use(helmet());
-app.use(cors({
-  origin: process.env.CLIENT_URL,   // e.g. "https://verse-frontend.onrender.com"
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL,   // your FRONTEND URL
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -33,15 +36,18 @@ app.use(cookieParser());
 // Static uploads
 app.use("/uploads", express.static("public/uploads"));
 
-// Routes
+// API routes
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/polls", pollRoutes);
 
-// HTTP + Socket.IO bootstrap (no changes here beyond CORS above)
-// …
+// Debug endpoint
+app.get("/api/test", (req, res) => {
+  return res.status(200).json({ message: "Backend is alive" });
+});
 
+// HTTP + Socket.IO setup
 const server = http.createServer(app);
 const io = new SocketIO(server, {
   cors: {
@@ -51,25 +57,24 @@ const io = new SocketIO(server, {
   transports: ["websocket", "polling"],
 });
 
-// … your socket auth + handlers …
 const onlineUsers = new Map();
 
-// NEW cookie‑based authentication for sockets
 io.use((socket, next) => {
-  const raw = socket.handshake.headers.cookie || "";
-  const parsed = cookie.parse(raw);       // parses into { jwt: "...", ... }
-  const token = parsed.jwt;               // name of your HTTP‑only cookie
+  try {
+    const raw = socket.handshake.headers.cookie || "";
+    const parsed = cookie.parse(raw);
+    const token = parsed.jwt;
+    if (!token) throw new Error("No JWT cookie");
 
-  if (!token) {
-    return next(new Error("Authentication error: No JWT cookie"));
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+      if (err) return next(new Error("Invalid token"));
+      socket.userId = decoded.userId || decoded._id;
+      next();
+    });
+  } catch (err) {
+    console.error("Socket auth error:", err);
+    return next(new Error("Authentication error"));
   }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return next(new Error("Authentication error: Invalid token"));
-    // attach your user id for later
-    socket.userId = decoded._id || decoded.userId || decoded.id;
-    next();
-  });
 });
 
 io.on("connection", (socket) => {
@@ -83,7 +88,6 @@ io.on("connection", (socket) => {
   );
 
   socket.on("joinRoom", (roomId) => socket.join(roomId.toString()));
-
   socket.on("sendMessage", (msg) => {
     const recv = msg.receiver.toString();
     io.to(recv).emit("receiveMessage", msg);
@@ -91,13 +95,12 @@ io.on("connection", (socket) => {
     if (snd !== recv) io.to(snd).emit("receiveMessage", msg);
   });
 
-  // typing, stopTyping, markRead, disconnect, etc...
   socket.on("disconnect", () => {
     onlineUsers.delete(userId);
     io.emit("user_offline", userId);
   });
 });
 
-server.listen(PORT, () =>
-  console.log(`🚀 Server running on http://localhost:${PORT}`)
-);
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

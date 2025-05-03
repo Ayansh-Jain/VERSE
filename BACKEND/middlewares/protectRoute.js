@@ -1,3 +1,4 @@
+// src/middlewares/protectRoute.js
 import jwt from "jsonwebtoken";
 import User from "../Models/userModel.js";
 
@@ -23,7 +24,7 @@ const protectRoute = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("protectRoute error:", error);
-    res.status(401).json({ message: "Unauthorized: Invalid token" });
+    return res.status(401).json({ message: "Unauthorized: Invalid token" });
   }
 };
 
