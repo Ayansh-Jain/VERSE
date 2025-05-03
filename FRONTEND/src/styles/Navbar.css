@@ -1,0 +1,114 @@
+/* // src/styles/Navbar.css */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Poppins:wght@400;600&family=Playfair+Display:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Borel&display=swap');
+*{
+    padding: 0px;
+    margin: 0px;
+  }
+  .NavbarContainer{
+    display: flex;
+  }
+ .navbar {
+    height: 100vh;
+    width: 15vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
+    box-shadow: 4px 0 10px rgba(255, 255, 255, 0.1);
+  }
+  .nav-svg{
+    display: none;
+  }
+
+.logo {
+    color: white;
+    font-family: "Borel";
+    font-size: xx-large;
+    font-weight: bold;
+    margin-bottom: 1vh;
+    margin-top: 5vh;
+}
+
+.nav-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.navButtons {
+  color: white;
+  text-decoration: none;
+  font-size: 125%;
+  margin-top:6vh;
+  font-family:"Montserrat" ;
+  transition: all 0.1s ease-in-out;
+  
+}
+.navButtons:hover{
+   transform: scale(1.03);
+}
+#navLogout{
+   margin-top: 40vh;
+}
+#navLogout:hover{
+    color:red ;
+    cursor: pointer;
+ }
+ .navButtons:active{
+    scale:98%;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    height: 10vh;
+    width: 100vw;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    padding-bottom: 40px;
+    padding-top: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+    z-index: 1;
+  }
+  .nav-span{
+    display: none;
+  }
+  .nav-svg{
+    display: block;
+    width: 35px;
+    height: 35px;
+  }
+  .nav-svg:active{
+    scale: 105%
+  }
+
+  .logo {
+    display: none;
+  }
+
+  .nav-buttons {
+    flex-direction: row;
+    flex-grow: 1;
+    justify-content: space-around;
+  }
+
+  .navButtons {
+    font-size: 14px;
+    color: white;
+    font-family: "Montserrat";
+    text-transform: uppercase;
+  }
+
+  #navLogout {
+    margin-top: 0;
+    margin-left: auto;
+    font-size: 14px;
+    color: red;
+    cursor: pointer;
+  }
+}

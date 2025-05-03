@@ -1,0 +1,305 @@
+/* src/styles/Feed.css */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Poppins:wght@400;600&family=Playfair+Display:wght@400;700&display=swap');
+
+* {
+  padding: 0px;
+  margin: 0px;
+  box-sizing: border-box;
+}
+.like-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.like-button.liked {
+  color: rgb(255, 255, 255);
+}
+.feed-container {
+  display: flex;
+  background-color: rgb(38, 38, 38);
+  height: 100vh;
+  width: 85vw;
+  gap: 20px;
+  padding: 20px;
+}
+
+/* Instagram Feed Styles */
+.feed-section {
+  background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
+  width: 55vw;
+  height: 100%;
+  color: white;
+  font-family: "Montserrat";
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.post {
+  background: #262626;
+  border-radius: 10px;
+  margin-bottom: 0px;
+  width: 800px;
+  
+}
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+}
+.post-header1 {
+  display: flex;
+  align-items: center;
+}
+.post-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.post-image{
+    display: flex;
+    justify-content: center;
+}
+
+.post-image img {
+  width:auto;
+  height:300px;
+}
+
+.post-actions {
+  padding: 10px;
+  display: flex;
+  gap: 15px;
+}
+
+.post-action {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Suggested Followers Styles */
+.suggested-followers {
+  background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
+  width: 30vw;
+  height: 100%;
+  color: white;
+  font-family: "Montserrat";
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: none;
+  background: #333;
+  color: white;
+  margin: 10px 0;
+}
+
+.suggested-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.follower-card {
+  display: flex;
+  align-items: center;
+  background: #333;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+  min-height: 70px;
+ 
+}
+
+.follower-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+.follower-card-info {
+  display: flex;
+  align-items: center;
+  max-width: 20ch;             /* limit to roughly 3 characters */
+  white-space: nowrap;        /* prevent wrapping */
+  overflow: hidden;           /* clip the rest */
+  text-overflow: ellipsis;
+}
+.follower-username {
+  flex: 1;
+  font-size: 14px;
+}
+
+
+.follow-button {
+  background:rgb(74, 74, 22);
+  color: white;
+  border: none;
+  padding: 5px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 15px;
+  height: 40px;
+  transition: background-color 0.3s;
+}
+
+.follow-button:hover {
+  background: rgb(33, 33, 7);
+}
+.follow-button.following {
+  background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
+}
+/* Scrollbar Styling */
+.suggested-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.suggested-list::-webkit-scrollbar-track {
+  background: #333;
+}
+
+.suggested-list::-webkit-scrollbar-thumb {
+  background: #666;
+  border-radius: 3px;
+}
+/* Add to existing CSS */
+.post {
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s;
+    margin-bottom: 30px;
+  }
+  
+  .post:hover {
+    transform: scale(1.02);
+  }
+  
+  .post-media img, .post-media video {
+    width: 100%;
+    height: auto;
+    max-height: 80vh;
+    object-fit: cover;
+  }
+  
+  .post-caption {
+    padding: 10px;
+    font-size: 14px;
+    color: #ddd;
+  }
+
+.feed-container {
+    display: flex;
+    background-color: rgb(38, 38, 38);
+    height: 100vh;
+    width: 85vw;
+    gap: 20px;
+    padding: 20px;
+    overflow: hidden; /* Prevent overall page scrolling */
+  }
+  
+  .feed-section {
+    background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
+    width: 55vw;
+    height: 100%;
+    color: white;
+    font-family: "Montserrat";
+    border-radius: 10px;
+    padding: 20px;
+    overflow-y: auto; /* Enable vertical scrolling */
+    display: flex;
+    flex-direction: column;
+    gap: 30px; /* Add spacing between posts */
+  }
+  
+  /* Scrollbar Styling for Feed Section */
+  .feed-section::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .post {
+    background: #262626;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    width: 100%;
+    max-width: 800px;
+    /* Center posts in the feed */
+  }
+  
+  /* Keep existing other styles */
+
+
+/* Add responsive styles for mobile devices */
+@media (max-width: 768px) {
+  .feed-container {
+    flex-direction: column;
+    width: 100%;
+    height: 90vh;
+    padding: 0%;
+  }
+  .feed-section {
+    width: 100%;
+    border-radius: 0%;
+  }
+  .suggested-followers {
+    width: 100%;
+  }
+  .post {
+    margin-bottom: 0px;
+  }
+  .post-header {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .post-username {
+    margin-top: 5px;
+  }
+  .post-media img {
+    max-width: 100%;
+    height: auto;
+  }
+  .post-header {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .post-username {
+    font-size: 14px;
+  }
+  .post-caption {
+    font-size: 12px;
+  }
+  .suggested-followers {
+    display: none; /* Hide suggested followers on very small screens */
+  }
+
+}
+
+@media (max-width: 480px) {
+  .post-header {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .post-username {
+    font-size: 14px;
+  }
+  .post-caption {
+    font-size: 12px;
+  }
+  .suggested-followers {
+    display: none; /* Hide suggested followers on very small screens */
+  }
+}

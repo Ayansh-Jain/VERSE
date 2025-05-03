@@ -1,0 +1,191 @@
+/* src/styles/Auth.css */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Poppins:wght@400;600&family=Playfair+Display:wght@400;700&display=swap');
+
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.SignUp-Container {
+  display: flex;
+  justify-content: space-between;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Card for the signup form */
+.signup-card {
+  background: #000;
+  border-radius: 8px;
+  padding: 25px;
+  width:400px;
+  font-family: "Montserrat", sans-serif;
+  max-width: 400px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.signup-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Form title */
+.signup-title {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: #fff;
+}
+
+/* Form styles */
+.signup-form .form-group {
+  margin-bottom: 15px;
+}
+
+.signup-form label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 5px;
+  color: #fff;
+}
+
+.signup-form input {
+  background-color: #181818;
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #252525;
+  border-radius: 4px;
+  outline: none;
+  color: #fff;
+  transition: border-color 0.3s;
+}
+
+.signup-form input:focus {
+  border-color: rgb(39, 39, 8);
+}
+
+.signup-btn {
+  width: 100%;
+  padding: 10px 15px;
+  font-size: 16px;
+  background-color: rgb(39, 39, 8);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.signup-btn:hover {
+  background-color: rgb(34, 34, 3);
+}
+
+.redirect {
+  text-align: center;
+  margin-top: 15px;
+  font-size: 14px;
+  color: #555;
+}
+
+.redirect a {
+  color: #0095f6;
+  text-decoration: none;
+}
+
+.redirect a:hover {
+  text-decoration: underline;
+}
+
+.signup-container {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: slideUp 1s ease-in-out forwards;
+}
+
+@keyframes slideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.error-messages {
+  color: red;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.error {
+  margin: 0.2rem 0;
+}
+
+.signup-section {
+  background-color: rgb(39, 39, 8);
+}
+/* below your existing styles */
+
+.social-login {
+  margin-top: 20px;
+  text-align: center;
+}
+.social-login p {
+  color: #ccc;
+  margin-bottom: 8px;
+}
+.social-btn {
+  margin: 0 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 500;
+}
+.social-btn.google {
+  background: #db4437;
+}
+.social-btn.facebook {
+  background: #3b5998;
+}
+.social-btn.twitter {
+  background: #1da1f2;
+}
+.social-btn:hover {
+  opacity: 0.9;
+}
+
+
+/* === MOBILE VIEW === */
+@media screen and (max-width: 1250px) {
+  .SignUp-Container img {
+    display: none;
+  }
+  .SignUp-Container {
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+  .signup-section {
+    width: 100%;
+    height: 100vh;                         /* fill viewport */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    /* USE THE ILLUSTRATION AS BACKGROUND */
+    background-image: url("/assets/Screenshot 2025-01-16 233921.png");
+    background-size: cover;
+    background-position:80%;
+    background-repeat: no-repeat;
+  }
+  .signup-card {
+    margin: 0;
+    width:95vw;
+    /* optionally add slight backdrop for readability */
+    background: rgba(0, 0, 0);
+  }
+}

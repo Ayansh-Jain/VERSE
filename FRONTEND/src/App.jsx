@@ -1,0 +1,61 @@
+// src/App.jsx
+import { Routes, Route, Navigate } from "react-router-dom";
+
+import Home from "./pages/Home";
+import SignIn from "./pages/SignIn";
+import SignUp from "./pages/SignUp";
+import Profile from "./pages/Profile";
+import Feed from "./pages/Feed";
+import Polls from "./pages/Polls";
+import Message from "./pages/Message";
+import AuthLayout from "./components/AuthLayout";
+import Layout from "./components/Layout";
+import { useAuth } from "./context/AuthContext";
+
+function App() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <p>Loading...</p>;
+  }
+
+  return (
+    <Routes>
+      {/* Landing Route: Show Home if not logged in, else redirect to dynamic profile */}
+      <Route
+        path="/"
+        element={!user ? <Home /> : <Navigate to={`/profile/${user._id}`} replace />}
+      />
+
+      {/* Auth Routes */}
+      <Route element={<AuthLayout />}>
+        <Route path="/signin" element={<SignIn setUser={undefined} />} /> 
+        {/* Note: For SignIn and SignUp, we pass setUser as prop if needed. 
+            Here, you might prefer to get it from AuthContext directly. */}
+        <Route path="/signup" element={<SignUp setUser={undefined} />} />
+      </Route>
+
+      {/* Protected Routes wrapped in Layout */}
+      <Route element={<Layout />}>
+        <Route
+          path="/profile/:userId"
+          element={user ? <Profile /> : <Navigate to="/signin" replace />}
+        />
+        <Route
+          path="/feed/:userId"
+          element={user ? <Feed /> : <Navigate to="/signin" replace />}
+        />
+        <Route
+          path="/polls/:userId"
+          element={user ? <Polls /> : <Navigate to="/signin" replace />}
+        />
+        <Route
+          path="/message/:userId"
+          element={user ? <Message /> : <Navigate to="/signin" replace />}
+        />
+      </Route>
+    </Routes>
+  );
+}
+
+export default App;

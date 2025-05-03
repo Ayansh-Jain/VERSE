@@ -1,0 +1,527 @@
+/* src/styles/Profile.css */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Poppins:wght@400;600&family=Playfair+Display:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Borel&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Alumni+Sans+Pinstripe:ital@0;1&display=swap');
+.profile-container {
+  display: flex;
+  height: 100vh;
+  width: 85vw;
+  overflow: hidden;
+}
+/* Profile Section (Left) */
+.profile-section {
+  background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
+  width: 55vw;
+  height: 100%;
+  color: white;
+  font-family: "Montserrat", sans-serif;
+  padding: 20px;
+  overflow-y: auto; /* Enable vertical scrolling */
+  
+}
+/* Profile header: profile pic on left, info on right */
+.profile-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  width: auto;
+}
+
+.profile-pic {
+  width: 30%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 20px;
+}
+
+.profile-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-info {
+  display: flex;
+  justify-content: space-between;
+  width: 55vw;
+}
+.profile-info-2 {
+  position: absolute;
+  top: 10px;
+  right: 31%;
+}
+
+.username {
+  font-size: 36px;
+  font-family: "Alumni Sans Pinstripe";
+  font-weight: 100;
+}
+
+/* Stats */
+.stats {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 10px;
+}
+
+/* Action buttons */
+.profile-actions {
+  margin-bottom: 20px;
+  margin-left: 10px;
+}
+
+.bio-section {
+  margin-left: 10px;
+  margin-bottom: 5px;
+}
+
+/* Edit button styles */
+.edit-button {
+  background-color: rgb(74, 74, 22);
+  height: 40px;
+  border: 1px solid rgb(74, 74, 22);
+  width: auto;
+  color: white;
+  padding: 5px 10px;
+  font-size: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+.edit-button:hover {
+  background: rgb(41, 41, 12);
+}
+
+/* Posts Section */
+.posts-section {
+  margin-top: 20px;
+}
+.posts-grid{
+  display: flex;
+  flex-wrap: wrap;
+}
+.post-minimized{
+  width: calc((50vw - 48px)/3);
+  height: calc((50vw - 48px)/3);
+  overflow: hidden;
+}
+.post-thumbnail{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Followers Panel (Right) */
+.followers-panel {
+  background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
+  width: 30vw;
+  height: 100%;
+  color: white;
+  font-family: "Montserrat", sans-serif;
+  padding: 20px;
+}
+.followers-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.search-bar input {
+  padding: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+}
+/* Follower card */
+.follower-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  justify-content: space-between;
+}
+.profile-follow-card {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 10px;
+  max-width: 20ch;             /* limit to roughly 3 characters */
+  white-space: nowrap;        /* prevent wrapping */
+  overflow: hidden;           /* clip the rest */
+  text-overflow: ellipsis;
+}
+.follower-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Create Post Button */
+.create-post-button {
+  border: 2px solid white;
+  border-radius: 12px;
+  color: white;
+  font-size: xx-large;
+  background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
+  height: 40px;
+  width: 40px;
+}
+.profile-top { 
+  margin-bottom: 15px;
+  display: flex;
+  gap: 10px;
+}
+/* Verse Points Section */
+.verse-points {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 10px;
+}
+.coin-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Modal Actions */
+.modal-actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+/* Skills Section */
+.skills-section {
+  margin-top: 10px;
+}
+.skills-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.skill-tag {
+  background-color: #444;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Skills Dropdown */
+.skills-dropdown-container {
+  margin-top: 10px;
+}
+.dropdown-toggle-button {
+  background: #333;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.skills-dropdown {
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 10px;
+  margin-top: 5px;
+}
+.skills-dropdown input {
+  width: 100%;
+  padding: 5px;
+  margin-bottom: 5px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: white;
+}
+.skills-options {
+  max-height: 150px;
+}
+.skill-option {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+.profile-section::-webkit-scrollbar {
+  display: none;
+}
+.scrollable-content-modal{
+  height: auto;
+  overflow-y:auto;
+}
+.profile-header-modal{
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  overflow-x: hidden;
+}
+.profile-pic-modal{
+  width: 20%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 10px;
+} 
+.profile-image-modal{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-actions-modal{
+  width:100%;
+  display: flex;
+  gap: 10px;
+}
+.edit-button-modal{
+  background-color: rgb(74, 74, 22);
+  height: 40px;
+  border: 1px solid rgb(74, 74, 22);
+  width:auto;
+  color: white;
+  padding: 5px 10px;
+  font-size: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.follower-posts-modal{
+ display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+.posts-grid-modal{
+  display: flex;
+  flex-wrap: wrap;
+}
+.post-minimized-modal{
+  width: calc((50vw - 48px)/3);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+.post-thumbnail-modal{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.suggested-list {
+  display: flex;
+  flex-direction: column;
+}
+.follower-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background-color: #262626;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.follower-card:hover {
+  background-color: #333;
+}
+
+.follower-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 12px;
+}
+
+.follower-username {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.follow-button {
+  background-color: #444;
+  border: none;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.follow-button.following {
+  background-color: #666;
+}
+
+.follow-button:hover {
+  background-color: #555;
+}
+
+/* Suggested Followers Panel */
+.suggested-followers-panel {
+  flex-direction: column;
+  padding: 16px;
+  background-color: #1c1c1c;
+  color: white;
+  font-family: "Montserrat", sans-serif;
+  height: 100vh;
+  overflow-y: auto;
+  display: none; /* Hidden by default */
+  width: 100%; /* Take full width in mobile */
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+.suggested-followers-panel.mobile-visible {
+  display: flex; /* Visible when mobileView is "following" */
+}
+
+/* Mobile View Specific Styles */
+@media (max-width: 768px) {
+  .profile-container {
+    flex-direction: column;
+    width: 100vw;
+    height: 90vh;
+    position: relative;
+  }
+ 
+  .profile-section {
+    width: 100%;
+    padding: 15px;
+  }
+  
+  .followers-panel {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 10;
+    overflow-y: auto;
+  }
+  
+  .posts-section {
+    width: 100%;
+  }
+  /* Profile header adjustments for mobile */
+  .profile-header {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-top: 10px;
+    margin-bottom: 5px;
+  }
+ 
+  .profile-pic {
+    width: 30%;
+    aspect-ratio: 1 / 1;
+    margin-bottom: 10px;
+  }
+  
+  .profile-info {
+    width: 100vw;
+    flex-direction: column;
+  }
+  .profile-info-1{
+    margin-top: 10px;
+  }
+  /* Move profile-info-2 to top right */
+  .profile-info-2 {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+  
+  .username {
+    font-size: 28px;
+    margin-bottom: 10px;
+  }
+  
+  .stats {
+    gap: 10px;
+  }
+  
+  /* Hide/show elements based on mobile view state */
+  .mobile-hidden {
+    display: none !important;
+  }
+  
+  .mobile-visible {
+    display: flex !important;
+  }
+  
+  /* Make stats clickable in mobile view */
+  .stat-clickable {
+    cursor: pointer;
+    text-decoration: none;
+  }
+  /* Back button for mobile */
+  .mobile-back {
+    margin-top: 20px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+  }
+  .mobile-back button {
+    background:transparent;
+    border: none;
+    color: white;
+    width:40px;
+    height: 40px;
+    font-size: xx-large;
+    cursor: pointer;
+  }
+  .posts-grid-modal{
+    display: flex;
+    flex-wrap: wrap;
+   
+  }
+  .post-minimized{
+    width: calc((100vw - 28px)/3);
+    height: calc((100vw - 28px)/3);
+    overflow: hidden;
+  }
+  .post-thumbnail{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .posts-grid{
+    display: flex;
+    flex-wrap: wrap;
+   
+  }
+  .post-minimized-modal{
+    width: calc((90vw - 28px)/3);
+    height: calc((90vw - 28px)/3);
+    overflow: hidden;
+  }
+  .post-thumbnail-modal{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-back {
+    display: none; /* Hidden in desktop view */
+  }
+  .suggested-followers-panel {
+    display: none !important;
+  }
+}
+@media(max-width:480px){
+  .profile-pic{
+    width: 30%;
+    height: calc(width);
+    margin-right: 20px;
+  }
+  .profile-info-2 {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+  }
+}

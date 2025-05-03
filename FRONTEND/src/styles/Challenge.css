@@ -1,0 +1,22 @@
+/* // src/styles/Challenge.css */
+.challenge-container {
+    background: #1e1e1e;
+    padding: 20px;
+    border-radius: 10px;
+    width: 100%;
+    color: white;
+  }
+  
+  .challenge-button {
+    background: gold;
+    color: black;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  
+  .challenge-button:hover {
+    background: orange;
+  }
+  

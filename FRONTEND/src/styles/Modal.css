@@ -1,0 +1,52 @@
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  overflow: hidden; /* never scroll horizontally */
+}
+
+.modal-content {
+  background: #262626;
+  padding:20px;
+  border-radius: 8px;
+  box-sizing: border-box;
+  max-height: 90vh;   /* vertical limit */
+  overflow-y: auto;   /* scroll if content too tall */
+  color: white;
+  font-family: "Montserrat", sans-serif;
+  /* **Constrain width** */
+  width: 50vw;         /* always leave a bit of screen-space */
+    /* or whatever maximum you like */
+  margin: 0;           /* ditch the 20px margin—overlay handles the spacing */
+  position: relative;
+}
+
+.modal-close-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.modal-content::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .modal-content {
+    width: 90vw;
+    padding: 10px;
+    padding-bottom: 20px;
+    padding-top: 20px;
+  }
+}
