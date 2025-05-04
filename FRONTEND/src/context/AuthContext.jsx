@@ -7,43 +7,43 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(null);    // will include token and normalized ids
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // on first mount, fetch the real current user
-    api.getCurrentUser()
-      .then((me) => {
-        // `me.following` was populated as [{_id,username,...},…]
-        const normalized = {
-          ...me,
-          following: (me.following || []).map((u) => u._id),
-          followers: (me.followers || []).map((u) => u._id),
-        };
-        setUser(normalized);
-        localStorage.setItem("user-verse", JSON.stringify(normalized));
-      })
-      .catch(() => {
-        setUser(null);
-        localStorage.removeItem("user-verse");
-      })
-      .finally(() => setLoading(false));
-  }, []);  // ← empty deps!
-
-  const logout = async () => {
-    // 1) clear cookie on server
-    try {
-      await api.logout();  // POST /api/users/logout
-    } catch (err) {
-      console.error("Error during server logout:", err);
+    const token = localStorage.getItem("verse_token");
+    if (token) {
+      api.getCurrentUser()
+        .then((me) => {
+          const normalized = {
+            ...me,
+            token,
+            following: (me.following || []).map((u) => u._id),
+            followers: (me.followers || []).map((u) => u._id),
+          };
+          setUser(normalized);
+          localStorage.setItem("verse_user", JSON.stringify(normalized));
+        })
+        .catch((err) => {
+          console.error("Error fetching current user:", err);
+          localStorage.removeItem("verse_token");
+          localStorage.removeItem("verse_user");
+          setUser(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
-    // 2) then clear client
-    localStorage.removeItem("user-verse");
+  }, []);
+
+  const logout = () => {
+    localStorage.removeItem("verse_token");
+    localStorage.removeItem("verse_user");
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, setUser, logout }}>
+    <AuthContext.Provider value={{ user, setUser, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );

@@ -1,176 +1,128 @@
-// src/api.js  (frontend helper)
+// src/api.js
 const API_BASE = "https://verse-48io.onrender.com/api";
 
 async function safeJson(res) {
   const text = await res.text();
-  if (text) {
-    try {
-      return JSON.parse(text);
-    } catch (err) {
-      console.error("safeJson parse error:", err, "Raw response:", text);
-      return { raw: text };
-    }
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.error("safeJson parse error:", err, "Raw response:", text);
+    return { raw: text };
   }
-  return {};
+}
+
+function authFetch(path, opts = {}) {
+  const token = localStorage.getItem("verse_token");
+  const headers = { ...(opts.headers || {}) };
+
+  // only set JSON content-type if body is a plain object/string, not FormData
+  if (opts.body && !(opts.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return fetch(`${API_BASE}${path}`, {
+    ...opts,
+    headers,
+  });
 }
 
 export const api = {
-  signup: async (userData) => {
-    const res = await fetch(`${API_BASE}/users/signup`, {
+  signup: (userData) =>
+    authFetch("/users/signup", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
-      credentials: "include",
-    });
-    return safeJson(res);
-  },
+    }).then(safeJson),
 
-  login: async (userData) => {
-    const res = await fetch(`${API_BASE}/users/login`, {
+  login: (userData) =>
+    authFetch("/users/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
-      credentials: "include",
-    });
-    return safeJson(res);
+    }).then(safeJson),
+
+  getCurrentUser: () =>
+    authFetch("/users/me").then((res) => {
+      if (!res.ok) {
+        throw new Error(res.statusText || "Failed to fetch current user");
+      }
+      return safeJson(res);
+    }),
+
+  logout: () => {
+    localStorage.removeItem("verse_token");
+    localStorage.removeItem("verse_user");
+    return Promise.resolve({ message: "Logged out." });
   },
 
-  getCurrentUser: async () => {
-    const res = await fetch(`${API_BASE}/users/me`, {
-      credentials: "include",
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(txt || res.statusText);
-    }
-    return safeJson(res);
-  },
+  getUserById: (userId) =>
+    authFetch(`/users/${userId}`).then(safeJson),
 
-  logout: async () => {
-    const res = await fetch(`${API_BASE}/users/logout`, {
-      method: "POST",
-      credentials: "include",
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(txt || res.statusText);
-    }
-    return safeJson(res);
-  },
+  followUser: (userId) =>
+    authFetch(`/users/${userId}/follow`, { method: "PUT" }).then(safeJson),
 
-  getUserById: async (userId) => {
-    const res = await fetch(`${API_BASE}/users/${userId}`, {
-      credentials: "include",
-    });
-    return safeJson(res);
-  },
+  likePost: (postId) =>
+    authFetch(`/posts/like/${postId}`, { method: "PUT" }).then(safeJson),
 
-  followUser: async (userId) => {
-    const res = await fetch(`${API_BASE}/users/${userId}/follow`, {
-      method: "PUT",
-      credentials: "include",
-    });
-    return safeJson(res);
-  },
-  likePost: async (postId) => {
-    const res = await fetch(`${API_BASE}/posts/like/${postId}`, {
-      method: "PUT",
-      credentials: "include",
-    });
-    return safeJson(res);
-  },
-  toggleLike: async (postId) => {
-    return await api.likePost(postId);
-  },
-  getFeed: async (page = 1, limit = 10) => {
-    const res = await fetch(
-      `${API_BASE}/posts/feed?page=${page}&limit=${limit}`,
-      { credentials: "include" }
-    );
-    return safeJson(res);
-  },
-  getAllUsers: async () => {
-    const res = await fetch(`${API_BASE}/users`, { credentials: "include" });
-    return safeJson(res);
-  },
-  sendMessage: async (formData) => {
-    const res = await fetch(`${API_BASE}/messages`, {
-      method: "POST",
-      body: formData,
-      credentials: "include",
-    });
-    return safeJson(res);
-  },
-  getConversation: async (userId) => {
-    const res = await fetch(`${API_BASE}/messages/conversation/${userId}`, {
-      credentials: "include",
-    });
-    return safeJson(res);
-  },
-  markConversationRead: async (userId) => {
-    const res = await fetch(`${API_BASE}/messages/conversation/${userId}/read`, {
-      method: "PUT",
-      credentials: "include",
-    });
-    return safeJson(res);
-  },
+  toggleLike: (postId) =>
+    api.likePost(postId),
+
+  createPost: (formData) =>
+    authFetch("/posts", { method: "POST", body: formData }).then(safeJson),
+
+  getFeed: (page = 1, limit = 10) =>
+    authFetch(`/posts/feed?page=${page}&limit=${limit}`).then(safeJson),
+
+  getAllUsers: () =>
+    authFetch("/users").then(safeJson),
+
+  sendMessage: (formData) =>
+    authFetch("/messages", { method: "POST", body: formData }).then(safeJson),
+
+  getConversation: (userId) =>
+    authFetch(`/messages/conversation/${userId}`).then(safeJson),
+
+  markConversationRead: (userId) =>
+    authFetch(`/messages/conversation/${userId}/read`, { method: "PUT" }).then(safeJson),
 
   createPoll: async (pollData) => {
-    const res = await fetch(`${API_BASE}/polls`, {
-      method: "POST",
-      body: pollData,
-      credentials: "include",
-    });
+    const res = await authFetch("/polls", { method: "POST", body: pollData });
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Error creating challenge: ${text}`);
+      const errText = await res.text();
+      throw new Error(errText || "Error creating poll");
     }
     return safeJson(res);
   },
-  votePoll: async (pollId, option) => {
-    const res = await fetch(`${API_BASE}/polls/${pollId}/vote`, {
+
+  votePoll: (pollId, option) =>
+    authFetch(`/polls/${pollId}/vote`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ option }),
-      credentials: "include",
-    });
-    return safeJson(res);
-  },
-  updatePollSubmission: async (pollId, submissionData) => {
-    const res = await fetch(`${API_BASE}/polls/${pollId}/submission`, {
+    }).then(safeJson),
+
+  updatePollSubmission: (pollId, submissionData) =>
+    authFetch(`/polls/${pollId}/submission`, {
       method: "PUT",
       body: submissionData,
-      credentials: "include",
-    });
-    return safeJson(res);
+    }).then(safeJson),
+
+  getPolls: () =>
+    authFetch("/polls").then(safeJson),
+
+  getPollById: (pollId) =>
+    authFetch(`/polls/${pollId}`).then(safeJson),
+
+  getUserProfile: () => {
+    const stored = localStorage.getItem("verse_user");
+    if (!stored) return Promise.reject(new Error("No user in storage"));
+    const { _id } = JSON.parse(stored);
+    return authFetch(`/users/${_id}`).then(safeJson);
   },
- 
-  getPolls: async () => {
-    const res = await fetch(`${API_BASE}/polls`, { credentials: "include" });
-    const text = await res.text();
-    return text ? JSON.parse(text) : { active: [], pending: [] };
-  },
-  getPollById: async (pollId) => {
-    const res = await fetch(`${API_BASE}/polls/${pollId}`, {
-      credentials: "include",
-    });
-    return safeJson(res);
-  },
-  getUserProfile: async () => {
-      const stored = JSON.parse(localStorage.getItem("user-verse"));
-     if (!stored?._id) throw new Error("No user in localStorage");
-    const res = await fetch(`${API_BASE}/users/${stored._id}`, {
-       credentials: "include",
-     });
-      if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
-       return safeJson(res);
-     },
-  cancelPoll: async () => {
-    const res = await fetch(`${API_BASE}/polls/cancel`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    return safeJson(res);
-  },
+
+  cancelPoll: () =>
+    authFetch("/polls/cancel", { method: "DELETE" }).then(safeJson),
 };
+
 export default api;

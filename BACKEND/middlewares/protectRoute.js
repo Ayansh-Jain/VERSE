@@ -4,27 +4,27 @@ import User from "../Models/userModel.js";
 
 const protectRoute = async (req, res, next) => {
   try {
-    const token = req.cookies.jwt;
-    if (!token) {
-      return res.status(401).json({ message: "Unauthorized: No token" });
+    const authHeader = req.headers.authorization || "";
+    const match = authHeader.match(/^Bearer (.+)$/);
+    if (!match) {
+      return res.status(401).json({ message: "Unauthorized: No token provided." });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.userId || decoded._id;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized: Invalid token payload" });
+    const decoded = jwt.verify(match[1], process.env.JWT_SECRET);
+    if (!decoded.id) {
+      return res.status(401).json({ message: "Unauthorized: Invalid token payload." });
     }
 
-    const user = await User.findById(userId).select("-password");
+    const user = await User.findById(decoded.id).select("-password");
     if (!user) {
-      return res.status(401).json({ message: "Unauthorized: User not found" });
+      return res.status(401).json({ message: "Unauthorized: User not found." });
     }
 
     req.user = user;
     next();
-  } catch (error) {
-    console.error("protectRoute error:", error);
-    return res.status(401).json({ message: "Unauthorized: Invalid token" });
+  } catch (err) {
+    console.error("protectRoute error:", err);
+    return res.status(401).json({ message: "Unauthorized: Invalid or expired token." });
   }
 };
 

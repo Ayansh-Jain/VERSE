@@ -25,7 +25,7 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,   // your FRONTEND URL
+    origin:"https://verse-frontend.onrender.com",   // your FRONTEND URL
     credentials: true,
   })
 );

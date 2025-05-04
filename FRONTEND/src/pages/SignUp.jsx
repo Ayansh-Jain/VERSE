@@ -3,8 +3,11 @@ import { useState } from "react";
 import "../styles/Auth.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { api } from "../api";
 
 const SignUp = () => {
+  const { setUser } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -12,24 +15,7 @@ const SignUp = () => {
     confirmPassword: "",
   });
   const [errorMessages, setErrorMessages] = useState([]);
-  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const { setUser } = useAuth();
-
-  const safeJson = async (res) => {
-    const text = await res.text();
-    if (text) {
-      try {
-        return JSON.parse(text);
-      } catch (err) {
-        console.error(err);
-        console.error("Invalid JSON:", text);
-        return { raw: text };
-      }
-    }
-    return {};
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -39,10 +25,8 @@ const SignUp = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessages([]);
-    setSuccessMessage("");
-    setLoading(true);
 
-    let errors = [];
+    const errors = [];
     if (!formData.username || !formData.email || !formData.password) {
       errors.push("All fields are required!");
     }
@@ -51,39 +35,34 @@ const SignUp = () => {
     }
     if (errors.length) {
       setErrorMessages(errors);
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
     try {
-      const res = await fetch("/api/users/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-        }),
-        credentials: "include",
+      const { token, user } = await api.signup({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
       });
-      const data = await safeJson(res);
-      console.log("SIGNUP RAW:", data);
 
-      if (res.ok) {
-        setSuccessMessage("Sign-up successful! Redirecting...");
-        const userWithTime = { ...data, loginTime: Date.now() };
-        localStorage.setItem("user-verse", JSON.stringify(userWithTime));
-        localStorage.setItem("lastLogin", Date.now().toString());
-        setUser(userWithTime);
-        setTimeout(() => navigate(`/profile/${data._id}`), 2000);
-      } else {
-        setErrorMessages([data.message || "Something went wrong."]);
-      }
+      // Persist and update context
+      localStorage.setItem("verse_token", token);
+      localStorage.setItem("verse_user", JSON.stringify(user));
+      setUser({
+        ...user,
+        token,
+        following: (user.following || []).map((u) => u._id),
+        followers: (user.followers || []).map((u) => u._id),
+      });
+
+      navigate(`/profile/${user._id}`);
     } catch (err) {
-      setErrorMessages([err.message || "An error occurred."]);
+      console.error("SignUp error:", err);
+      setErrorMessages([err.message || "Sign-up failed."]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -103,6 +82,7 @@ const SignUp = () => {
               required
             />
           </div>
+
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -115,6 +95,7 @@ const SignUp = () => {
               required
             />
           </div>
+
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <input
@@ -127,6 +108,7 @@ const SignUp = () => {
               required
             />
           </div>
+
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm Password</label>
             <input
@@ -139,21 +121,19 @@ const SignUp = () => {
               required
             />
           </div>
+
           {errorMessages.length > 0 && (
             <div className="error-messages">
-              {errorMessages.map((e, i) => (
-                <p key={i} className="error">{e}</p>
+              {errorMessages.map((msg, idx) => (
+                <p key={idx} className="error">{msg}</p>
               ))}
             </div>
           )}
-          {successMessage && <p className="success">{successMessage}</p>}
-          <button
-            type="submit"
-            className="signup-btn"
-            disabled={loading}
-          >
+
+          <button type="submit" className="signup-btn" disabled={loading}>
             {loading ? "Signing up..." : "Sign Up"}
           </button>
+
           <p className="redirect">
             Already have an account? <Link to="/signin">Sign In</Link>
           </p>

@@ -3,28 +3,15 @@ import { useState } from "react";
 import "../styles/Auth.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { api } from "../api";
 
 const SignIn = () => {
+  const { setUser } = useAuth();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errorMessages, setErrorMessages] = useState([]);
-  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const { setUser } = useAuth();
-
-  const safeJson = async (res) => {
-    const text = await res.text();
-    if (text) {
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        console.error("safeJson parse error:", e, "Raw response:", text);
-        console.error("Invalid JSON:", text);
-        return { raw: text };
-      }
-    }
-    return {};
-  };
 
   const handleChange = (e) =>
     setFormData((p) => ({ ...p, [e.target.id]: e.target.value }));
@@ -32,40 +19,36 @@ const SignIn = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessages([]);
-    setSuccessMessage("");
-    setLoading(true);
 
     if (!formData.email || !formData.password) {
       setErrorMessages(["All fields are required!"]);
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
     try {
-      const res = await fetch("/api/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-        credentials: "include",
+      const { token, user } = await api.login({
+        email: formData.email,
+        password: formData.password,
       });
-      const data = await safeJson(res);
-      console.log("LOGIN RAW:", data);
 
-      if (res.ok) {
-        setSuccessMessage("Sign-in successful! Redirecting...");
-        const userWithTime = { ...data, loginTime: Date.now() };
-        localStorage.setItem("user-verse", JSON.stringify(userWithTime));
-        localStorage.setItem("lastLogin", Date.now().toString());
-        setUser(userWithTime);
-        navigate(`/profile/${data._id}`);
-      } else {
-        setErrorMessages([data.message || "Something went wrong."]);
-      }
+      // Persist and update context
+      localStorage.setItem("verse_token", token);
+      localStorage.setItem("verse_user", JSON.stringify(user));
+      setUser({
+        ...user,
+        token,
+        following: (user.following || []).map((u) => u._id),
+        followers: (user.followers || []).map((u) => u._id),
+      });
+
+      navigate(`/profile/${user._id}`);
     } catch (err) {
-      setErrorMessages([err.message || "An error occurred."]);
+      console.error("SignIn error:", err);
+      setErrorMessages([err.message || "Sign in failed."]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -85,6 +68,7 @@ const SignIn = () => {
               autoComplete="email"
             />
           </div>
+
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <input
@@ -97,24 +81,21 @@ const SignIn = () => {
               autoComplete="current-password"
             />
           </div>
+
           {errorMessages.length > 0 && (
             <div className="error-messages">
-              {errorMessages.map((e, i) => (
-                <p key={i} className="error">{e}</p>
+              {errorMessages.map((msg, idx) => (
+                <p key={idx} className="error">{msg}</p>
               ))}
             </div>
           )}
-          {successMessage && <p className="success">{successMessage}</p>}
-          <button
-            type="submit"
-            className="signup-btn"
-            disabled={loading}
-          >
+
+          <button type="submit" className="signup-btn" disabled={loading}>
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
         <p className="redirect">
-          Dont have an account? <Link to="/signup">Sign Up</Link>
+          Don’t have an account? <Link to="/signup">Sign Up</Link>
         </p>
       </div>
     </div>
