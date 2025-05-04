@@ -16,7 +16,7 @@ function authFetch(path, opts = {}) {
   const token = localStorage.getItem("verse_token");
   const headers = { ...(opts.headers || {}) };
 
-  // only set JSON content-type if body is a plain object/string, not FormData
+  // If body is JSON (not FormData), set the header
   if (opts.body && !(opts.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
@@ -30,18 +30,43 @@ function authFetch(path, opts = {}) {
   });
 }
 
+// Ensures login/signup always returns { token, user: { … } }
+function normalizeAuthResponse(data) {
+  if (data.user) {
+    return data;
+  }
+  // cookie‑based shape: { _id, username, email, profilePic, followers, following, token }
+  const {
+    token,
+    _id,
+    username,
+    email,
+    profilePic,
+    followers = [],
+    following = [],
+  } = data;
+  return {
+    token,
+    user: { _id, username, email, profilePic, followers, following },
+  };
+}
+
 export const api = {
   signup: (userData) =>
     authFetch("/users/signup", {
       method: "POST",
       body: JSON.stringify(userData),
-    }).then(safeJson),
+    })
+      .then(safeJson)
+      .then(normalizeAuthResponse),
 
   login: (userData) =>
     authFetch("/users/login", {
       method: "POST",
       body: JSON.stringify(userData),
-    }).then(safeJson),
+    })
+      .then(safeJson)
+      .then(normalizeAuthResponse),
 
   getCurrentUser: () =>
     authFetch("/users/me").then((res) => {
@@ -63,14 +88,14 @@ export const api = {
   followUser: (userId) =>
     authFetch(`/users/${userId}/follow`, { method: "PUT" }).then(safeJson),
 
+  createPost: (formData) =>
+    authFetch("/posts", { method: "POST", body: formData }).then(safeJson),
+
   likePost: (postId) =>
     authFetch(`/posts/like/${postId}`, { method: "PUT" }).then(safeJson),
 
   toggleLike: (postId) =>
     api.likePost(postId),
-
-  createPost: (formData) =>
-    authFetch("/posts", { method: "POST", body: formData }).then(safeJson),
 
   getFeed: (page = 1, limit = 10) =>
     authFetch(`/posts/feed?page=${page}&limit=${limit}`).then(safeJson),
@@ -85,16 +110,18 @@ export const api = {
     authFetch(`/messages/conversation/${userId}`).then(safeJson),
 
   markConversationRead: (userId) =>
-    authFetch(`/messages/conversation/${userId}/read`, { method: "PUT" }).then(safeJson),
+    authFetch(`/messages/conversation/${userId}/read`, {
+      method: "PUT",
+    }).then(safeJson),
 
-  createPoll: async (pollData) => {
-    const res = await authFetch("/polls", { method: "POST", body: pollData });
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(errText || "Error creating poll");
-    }
-    return safeJson(res);
-  },
+  createPoll: (pollData) =>
+    authFetch("/polls", { method: "POST", body: pollData }).then(async (res) => {
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || "Error creating poll");
+      }
+      return safeJson(res);
+    }),
 
   votePoll: (pollId, option) =>
     authFetch(`/polls/${pollId}/vote`, {
@@ -116,7 +143,9 @@ export const api = {
 
   getUserProfile: () => {
     const stored = localStorage.getItem("verse_user");
-    if (!stored) return Promise.reject(new Error("No user in storage"));
+    if (!stored) {
+      return Promise.reject(new Error("No user in storage"));
+    }
     const { _id } = JSON.parse(stored);
     return authFetch(`/users/${_id}`).then(safeJson);
   },
