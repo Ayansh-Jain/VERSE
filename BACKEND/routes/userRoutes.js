@@ -7,7 +7,7 @@ import {
   signup,
   login,
   logout,
-  uploadProfilePic,
+
   updateProfilePicture,
   followUser,
 } from "../controllers/userController.js";
