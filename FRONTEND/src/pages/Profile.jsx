@@ -59,7 +59,7 @@ const Profile = () => {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const response = await fetch(`https://verse-48io.onrender.com/api/users/${userId}`, {
+      const response = await fetch(`/api/users/${userId}`, {
         credentials: "include",
       });
       if (!response.ok) {
