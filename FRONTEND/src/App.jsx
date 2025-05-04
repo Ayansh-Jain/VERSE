@@ -1,6 +1,4 @@
-// src/App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
-
 import Home from "./pages/Home";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
@@ -21,21 +19,19 @@ function App() {
 
   return (
     <Routes>
-      {/* Landing Route: Show Home if not logged in, else redirect to dynamic profile */}
+      {/* Landing: Home or redirect to profile */}
       <Route
         path="/"
         element={!user ? <Home /> : <Navigate to={`/profile/${user._id}`} replace />}
       />
 
-      {/* Auth Routes */}
+      {/* Auth Pages */}
       <Route element={<AuthLayout />}>
-        <Route path="/signin" element={<SignIn setUser={undefined} />} /> 
-        {/* Note: For SignIn and SignUp, we pass setUser as prop if needed. 
-            Here, you might prefer to get it from AuthContext directly. */}
-        <Route path="/signup" element={<SignUp setUser={undefined} />} />
+        <Route path="/signin" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
       </Route>
 
-      {/* Protected Routes wrapped in Layout */}
+      {/* App Layout & Protected Pages */}
       <Route element={<Layout />}>
         <Route
           path="/profile/:userId"

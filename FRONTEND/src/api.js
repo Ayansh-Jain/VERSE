@@ -1,5 +1,5 @@
 // src/api.js  (frontend helper)
-const API_BASE = "/api";
+const API_BASE = "https://verse-48io.onrender.com/api";
 
 async function safeJson(res) {
   const text = await res.text();
