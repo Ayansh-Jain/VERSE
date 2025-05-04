@@ -1,3 +1,4 @@
+// controllers/userController.js
 import User from "../Models/userModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -104,7 +105,9 @@ export const signup = async (req, res) => {
         .json({ message: "User with this email already exists." });
     }
 
+    // Create with raw password; pre-save hook will hash it once
     const newUser = await User.create({ username, email, password });
+
     const token = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 
     res.status(201).json({

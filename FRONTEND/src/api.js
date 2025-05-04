@@ -1,9 +1,11 @@
 // src/api.js
 
-// Fallback to the real backend if the env var is missing:
+// Base URL (no trailing “/api” here—keep it clean)
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
-  "https://verse-48io.onrender.com/api";
+  "https://verse-48io.onrender.com";
+
+// Safely parse JSON or return raw text
 async function safeJson(res) {
   const text = await res.text();
   if (!text) return {};
@@ -14,11 +16,12 @@ async function safeJson(res) {
   }
 }
 
-function authFetch(path, opts = {}) {
+// Unified fetch with token + error handling
+async function authFetch(path, opts = {}) {
   const token = localStorage.getItem("verse_token");
   const headers = { ...(opts.headers || {}) };
 
-  // If body is not FormData, assume JSON
+  // auto-content type for JSON bodies
   if (opts.body && !(opts.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
@@ -26,11 +29,29 @@ function authFetch(path, opts = {}) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  return fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${API_BASE}/api${path}`, {
     ...opts,
     headers,
     credentials: "include",
   });
+
+  const data = await safeJson(res);
+  if (!res.ok) {
+    // normalized throw
+    const msg = data?.message || res.statusText || "Request failed";
+    throw new Error(msg);
+  }
+  return data;
+}
+
+// Normalize the user + token shape
+function normalizeUser({ token, user }) {
+  return {
+    ...user,
+    token,
+    following: (user.following || []).map((u) => u._id),
+    followers: (user.followers || []).map((u) => u._id),
+  };
 }
 
 export const api = {
@@ -38,19 +59,15 @@ export const api = {
     authFetch("/users/signup", {
       method: "POST",
       body: JSON.stringify(userData),
-    }).then(safeJson),
+    }).then(normalizeUser),
 
   login: (userData) =>
     authFetch("/users/login", {
       method: "POST",
       body: JSON.stringify(userData),
-    }).then(safeJson),
+    }).then(normalizeUser),
 
-  getCurrentUser: () =>
-    authFetch("/users/me").then(async (res) => {
-      if (!res.ok) throw new Error(res.statusText || "Failed to fetch");
-      return safeJson(res);
-    }),
+  getCurrentUser: () => authFetch("/users/me"),
 
   logout: () => {
     localStorage.removeItem("verse_token");
@@ -58,70 +75,55 @@ export const api = {
     return Promise.resolve({ message: "Logged out." });
   },
 
-  getUserById: (id) => authFetch(`/users/${id}`).then(safeJson),
+  getUserById: (id) => authFetch(`/users/${id}`),
   followUser: (id) =>
-    authFetch(`/users/${id}/follow`, { method: "PUT" }).then(safeJson),
+    authFetch(`/users/${id}/follow`, { method: "PUT" }),
 
   createPost: (formData) =>
-    authFetch("/posts", { method: "POST", body: formData }).then(safeJson),
+    authFetch("/posts", { method: "POST", body: formData }),
   likePost: (postId) =>
-    authFetch(`/posts/like/${postId}`, { method: "PUT" }).then(safeJson),
+    authFetch(`/posts/like/${postId}`, { method: "PUT" }),
   toggleLike: (postId) => api.likePost(postId),
 
   getFeed: (page = 1, limit = 10) =>
-    authFetch(`/posts/feed?page=${page}&limit=${limit}`).then(safeJson),
+    authFetch(`/posts/feed?page=${page}&limit=${limit}`),
 
-  getAllUsers: () => authFetch("/users").then(safeJson),
+  getAllUsers: () => authFetch("/users"),
 
   sendMessage: (formData) =>
-    authFetch("/messages", { method: "POST", body: formData }).then(safeJson),
+    authFetch("/messages", { method: "POST", body: formData }),
   getConversation: (userId) =>
-    authFetch(`/messages/conversation/${userId}`).then(safeJson),
+    authFetch(`/messages/conversation/${userId}`),
   markConversationRead: (userId) =>
     authFetch(`/messages/conversation/${userId}/read`, {
       method: "PUT",
-    }).then(safeJson),
+    }),
 
   createPoll: (pollData) =>
-    authFetch("/polls", { method: "POST", body: pollData }).then(async (res) => {
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || "Error creating poll");
-      }
-      return safeJson(res);
-    }),
+    authFetch("/polls", { method: "POST", body: pollData }),
 
   votePoll: (pollId, option) =>
     authFetch(`/polls/${pollId}/vote`, {
       method: "PUT",
       body: JSON.stringify({ option }),
-    }).then(safeJson),
+    }),
 
   updatePollSubmission: (pollId, submissionData) =>
     authFetch(`/polls/${pollId}/submission`, {
       method: "PUT",
       body: submissionData,
-    }).then(safeJson),
+    }),
 
-  getPolls: () => authFetch("/polls").then(safeJson),
-  getPollById: (pollId) => authFetch(`/polls/${pollId}`).then(safeJson),
+  getPolls: () => authFetch("/polls"),
+  getPollById: (pollId) => authFetch(`/polls/${pollId}`),
   cancelPoll: () =>
-    authFetch("/polls/cancel", { method: "DELETE" }).then(safeJson),
+    authFetch("/polls/cancel", { method: "DELETE" }),
 
-  getUserProfile: () => {
-    // Simply hit the protected “me” endpoint:
-    return authFetch("/users/me").then(async (res) => {
-      if (!res.ok) throw new Error(res.statusText || "Failed to fetch current user");
-      return safeJson(res);
-    });
-    
-  },
-  
   updateProfile: (id, formData) =>
     authFetch(`/users/${id}/update-profile`, {
       method: "PUT",
-      body: formData
-    }).then(safeJson),
+      body: formData,
+    }),
 };
 
 export default api;
