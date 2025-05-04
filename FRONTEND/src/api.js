@@ -110,10 +110,11 @@ export const api = {
     authFetch("/polls/cancel", { method: "DELETE" }).then(safeJson),
 
   getUserProfile: () => {
-    const stored = localStorage.getItem("verse_user");
-    if (!stored) return Promise.reject(new Error("No user in storage"));
-    const { _id } = JSON.parse(stored);
-    return authFetch(`/users/${_id}`).then(safeJson);
+    // Simply hit the protected “me” endpoint:
+    return authFetch("/users/me").then(async (res) => {
+      if (!res.ok) throw new Error(res.statusText || "Failed to fetch current user");
+      return safeJson(res);
+    });
   },
 };
 
