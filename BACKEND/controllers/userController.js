@@ -1,185 +1,84 @@
+import Post from "../Models/postModel.js";
 import User from "../Models/userModel.js";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES = "20d";
-
-export const getCurrentUser = async (req, res) => {
+// Create post — image/video upload field “img” via Cloudinary
+export const createPost = async (req, res) => {
   try {
-    const me = await User.findById(req.user._id)
-      .select("-password")
-      .populate("followers", "username profilePic")
-      .populate("following", "username profilePic")
-      .populate({ path: "posts", select: "img text" });
+    const { text } = req.body;
+    const imgUrl = req.file ? req.file.path : null;
 
-    if (!me) {
-      return res.status(404).json({ message: "User not found." });
-    }
-    return res.status(200).json(me);
-  } catch (err) {
-    console.error("getCurrentUser error:", err);
-    return res.status(500).json({ message: "Server error." });
-  }
-};
-
-export const getUserById = async (req, res) => {
-  try {
-    const userFound = await User.findById(req.params.id)
-      .select("-password")
-      .populate("followers", "username profilePic")
-      .populate("following", "username profilePic")
-      .populate({ path: "posts", select: "img text" });
-
-    if (!userFound) {
-      return res.status(404).json({ message: "User not found." });
-    }
-    return res.status(200).json(userFound);
-  } catch (err) {
-    console.error("getUserById error:", err);
-    return res.status(500).json({ message: err.message });
-  }
-};
-
-export const updateProfilePicture = async (req, res) => {
-  try {
-    if (req.params.id !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Unauthorized." });
-    }
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    if (req.file) user.profilePic = req.file.path;
-    if (req.body.bio !== undefined) user.bio = req.body.bio;
-    if (req.body.organization !== undefined) user.organization = req.body.organization;
-    if (req.body.skills !== undefined) user.skills = JSON.parse(req.body.skills);
-
-    await user.save();
-
-    const updated = await User.findById(req.user._id)
-      .select("-password")
-      .populate("followers", "username profilePic")
-      .populate("following", "username profilePic")
-      .populate({ path: "posts", select: "img text" });
-
-    return res.status(200).json(updated);
-  } catch (err) {
-    console.error("updateProfilePicture error:", err);
-    return res.status(500).json({ message: err.message });
-  }
-};
-
-export const signup = async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
-    if (!username || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Username, email, and password are required." });
-    }
-
-    if (await User.findOne({ email })) {
-      return res
-        .status(400)
-        .json({ message: "User with this email already exists." });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const newUser = await User.create({ username, email, password: hashedPassword });
-
-    const token = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
-
-    return res.status(201).json({
-      token,
-      user: {
-        _id: newUser._id,
-        username: newUser.username,
-        email: newUser.email,
-        profilePic: newUser.profilePic,
-        followers: newUser.followers,
-        following: newUser.following,
-      },
+    const newPost = new Post({
+      postedBy: req.user._id,
+      text,
+      img: imgUrl,
     });
-  } catch (err) {
-    console.error("signup error:", err);
-    return res.status(500).json({ message: "Server error during signup." });
+    await newPost.save();
+
+    // Add post ID to user
+    await User.findByIdAndUpdate(req.user._id, {
+      $push: { posts: newPost._id },
+    });
+
+    res.status(201).json(newPost);
+  } catch (error) {
+    console.error("createPost error:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-export const login = async (req, res) => {
+// Fetch feed: posts by following first, then others
+export const getFeed = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required." });
-    }
+    const page  = parseInt(req.query.page)  || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip  = (page - 1) * limit;
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: "Invalid email or password." });
-    }
+    const feedUsers = req.user.following.map((id) => id.toString());
+    feedUsers.push(req.user._id.toString());
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res
-        .status(401)
-        .json({ message: "Invalid email or password." });
-    }
+    const followingPosts = await Post.find({
+      postedBy: { $in: feedUsers },
+    })
+      .populate("postedBy", "username profilePic")
+      .sort({ createdAt: -1 });
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+    const nonFollowingPosts = await Post.find({
+      postedBy: { $nin: feedUsers },
+    })
+      .populate("postedBy", "username profilePic")
+      .sort({ createdAt: -1 });
 
-    return res.status(200).json({
-      token,
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        profilePic: user.profilePic,
-        followers: user.followers,
-        following: user.following,
-      },
-    });
-  } catch (err) {
-    console.error("login error:", err);
-    return res.status(500).json({ message: "Server error during login." });
+    const allPosts = [...followingPosts, ...nonFollowingPosts];
+    const paginated = allPosts.slice(skip, skip + limit);
+
+    res.status(200).json(paginated);
+  } catch (error) {
+    console.error("getFeed error:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-export const logout = async (req, res) => {
-  return res.status(200).json({ message: "Logged out successfully." });
-};
-
-export const followUser = async (req, res) => {
+// Like / Unlike a post
+export const likePost = async (req, res) => {
   try {
-    const targetUser = await User.findById(req.params.id);
-    const currentUser = await User.findById(req.user._id);
-
-    if (!targetUser) {
-      return res.status(404).json({ message: "User not found." });
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found." });
     }
 
-    const isFollowing = currentUser.following.includes(targetUser._id);
-    if (isFollowing) {
-      currentUser.following.pull(targetUser._id);
-      targetUser.followers.pull(currentUser._id);
-    } else {
-      currentUser.following.push(targetUser._id);
-      targetUser.followers.push(currentUser._id);
-    }
+    const userId = req.user._id;
+    const isLiked = post.likes.some((id) => id.toString() === userId.toString());
+    const update  = isLiked
+      ? { $pull:   { likes: userId } }
+      : { $addToSet: { likes: userId } };
 
-    await currentUser.save();
-    await targetUser.save();
-
-    return res.status(200).json({
-      message: isFollowing ? "Unfollowed successfully." : "Followed successfully.",
+    const updatedPost = await Post.findByIdAndUpdate(req.params.id, update, {
+      new: true,
     });
-  } catch (err) {
-    console.error("followUser error:", err);
-    return res.status(500).json({ message: "Server error during follow/unfollow." });
+
+    res.status(200).json({ message: "Post updated.", likes: updatedPost.likes });
+  } catch (error) {
+    console.error("likePost error:", error);
+    res.status(500).json({ message: error.message });
   }
 };
