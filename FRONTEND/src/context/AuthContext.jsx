@@ -5,11 +5,15 @@ import { api } from "../api";
 
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
-
+const idOf = (u) => {
+  if (typeof u === "string") return u;
+  if (u?._id) return u._id;
+  return u.toString();
+};
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);    // will include token and normalized ids
   const [loading, setLoading] = useState(true);
-
+  
   useEffect(() => {
     const token = localStorage.getItem("verse_token");
     if (token) {
@@ -18,8 +22,8 @@ export const AuthProvider = ({ children }) => {
           const normalized = {
             ...me,
             token,
-            following: (me.following || []).map((u) => u._id),
-            followers: (me.followers || []).map((u) => u._id),
+            following: (me.following || []).map(idOf),
+            followers: (me.followers || []).map(idOf),
           };
           setUser(normalized);
           localStorage.setItem("verse_user", JSON.stringify(normalized));
