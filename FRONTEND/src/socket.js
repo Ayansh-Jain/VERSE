@@ -1,7 +1,10 @@
 // src/socket.js
 import { io } from "socket.io-client";
 
-const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL;
+// Fallback to your backend if the VITE var isn’t set:
+const SOCKET_SERVER_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  "https://verse-48io.onrender.com";
 
 const socket = io(SOCKET_SERVER_URL, {
   auth: {

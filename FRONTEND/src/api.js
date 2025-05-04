@@ -1,5 +1,9 @@
 // src/api.js
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+// Fallback to the real backend if the env var is missing:
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://verse-48io.onrender.com/api";
 
 async function safeJson(res) {
   const text = await res.text();
@@ -15,7 +19,7 @@ function authFetch(path, opts = {}) {
   const token = localStorage.getItem("verse_token");
   const headers = { ...(opts.headers || {}) };
 
-  // JSON vs FormData
+  // If body is not FormData, assume JSON
   if (opts.body && !(opts.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
@@ -44,11 +48,10 @@ export const api = {
     }).then(safeJson),
 
   getCurrentUser: () =>
-    authFetch("/users/me")
-      .then((res) => {
-        if (!res.ok) throw new Error(res.statusText);
-        return safeJson(res);
-      }),
+    authFetch("/users/me").then(async (res) => {
+      if (!res.ok) throw new Error(res.statusText || "Failed to fetch");
+      return safeJson(res);
+    }),
 
   logout: () => {
     localStorage.removeItem("verse_token");
