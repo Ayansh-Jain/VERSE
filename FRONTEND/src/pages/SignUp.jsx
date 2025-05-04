@@ -8,6 +8,7 @@ import { api } from "../api";
 const SignUp = () => {
   const { setUser } = useAuth();
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -40,23 +41,31 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      const { token, user } = await api.signup({
+      // Destructure the API response correctly
+      const { token, user: apiUser } = await api.signup({
         username: formData.username,
         email: formData.email,
         password: formData.password,
       });
 
+      // Normalize following/followers to arrays of IDs
+      const normalized = {
+        ...apiUser,
+        token,
+        following: (apiUser.following || []).map((u) =>
+          typeof u === "string" ? u : u._id
+        ),
+        followers: (apiUser.followers || []).map((u) =>
+          typeof u === "string" ? u : u._id
+        ),
+      };
+
       // Persist and update context
       localStorage.setItem("verse_token", token);
-      localStorage.setItem("verse_user", JSON.stringify(user));
-      setUser({
-        ...user,
-        token,
-        following: (user.following || []).map((u) => u._id),
-        followers: (user.followers || []).map((u) => u._id),
-      });
+      localStorage.setItem("verse_user", JSON.stringify(normalized));
+      setUser(normalized);
 
-      navigate(`/profile/${user._id}`);
+      navigate(`/profile/${apiUser._id}`);
     } catch (err) {
       console.error("SignUp error:", err);
       setErrorMessages([err.message || "Sign-up failed."]);

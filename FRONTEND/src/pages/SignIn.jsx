@@ -14,7 +14,7 @@ const SignIn = () => {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) =>
-    setFormData((p) => ({ ...p, [e.target.id]: e.target.value }));
+    setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,22 +27,30 @@ const SignIn = () => {
 
     setLoading(true);
     try {
-      const { token, user } = await api.login({
+      // Destructure the API response correctly
+      const { token, user: apiUser } = await api.login({
         email: formData.email,
         password: formData.password,
       });
 
+      // Normalize following/followers to arrays of IDs
+      const normalized = {
+        ...apiUser,
+        token,
+        following: (apiUser.following || []).map((u) =>
+          typeof u === "string" ? u : u._id
+        ),
+        followers: (apiUser.followers || []).map((u) =>
+          typeof u === "string" ? u : u._id
+        ),
+      };
+
       // Persist and update context
       localStorage.setItem("verse_token", token);
-      localStorage.setItem("verse_user", JSON.stringify(user));
-      setUser({
-        ...user,
-        token,
-        following: (user.following || []).map((u) => u._id),
-        followers: (user.followers || []).map((u) => u._id),
-      });
+      localStorage.setItem("verse_user", JSON.stringify(normalized));
+      setUser(normalized);
 
-      navigate(`/profile/${user._id}`);
+      navigate(`/profile/${apiUser._id}`);
     } catch (err) {
       console.error("SignIn error:", err);
       setErrorMessages([err.message || "Sign in failed."]);
