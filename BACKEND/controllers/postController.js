@@ -1,4 +1,4 @@
-// src/controllers/postController.js
+//controllers/postController.js
 import Post from "../Models/postModel.js";
 import User from "../Models/userModel.js"; // Ensure you import User model
 import upload from "../middlewares/upload.js";

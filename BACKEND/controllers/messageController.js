@@ -1,4 +1,4 @@
-// src/controllers/messageController.js
+// controllers/messageController.js
 import Message from "../Models/messageModel.js";
 import User from "../Models/userModel.js";
 

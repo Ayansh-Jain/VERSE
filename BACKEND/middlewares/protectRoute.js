@@ -1,4 +1,4 @@
-// src/middlewares/protectRoute.js
+//middlewares/protectRoute.js
 import jwt from "jsonwebtoken";
 import User from "../Models/userModel.js";
 

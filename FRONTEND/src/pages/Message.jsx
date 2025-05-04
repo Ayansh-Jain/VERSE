@@ -1,3 +1,4 @@
+//src/pages/Message.jsx
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import socket from "../socket";

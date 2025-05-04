@@ -1,3 +1,4 @@
+// Models/challengeModel.js
 import mongoose from "mongoose";
 
 const challengeSchema = new mongoose.Schema(

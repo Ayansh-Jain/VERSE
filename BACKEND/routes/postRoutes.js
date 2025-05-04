@@ -1,4 +1,4 @@
-// src/routes/postRoutes.js
+// routes/postRoutes.js
 import express from "express"; 
 import { createPost, uploadPostImage, getFeed, likePost } from "../controllers/postController.js";
 import protectRoute from "../middlewares/protectRoute.js";

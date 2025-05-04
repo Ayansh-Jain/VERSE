@@ -1,3 +1,4 @@
+//src/pages/Polls.jsx
 import { useEffect, useState } from "react";
 import Modal from "../components/Modal";
 import "../styles/Polls.css";

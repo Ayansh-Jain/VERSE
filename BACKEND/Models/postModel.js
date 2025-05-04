@@ -1,4 +1,4 @@
-// src/models/postModel.js
+// Models/postModel.js
 import mongoose from "mongoose";
 
 const postSchema = mongoose.Schema(

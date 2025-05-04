@@ -1,4 +1,4 @@
-// src/controllers/userController.js
+//controllers/userController.js
 import User from "../Models/userModel.js";
 import upload from "../middlewares/upload.js";
 import bcrypt from "bcrypt";

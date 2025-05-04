@@ -1,13 +1,12 @@
 // src/api.js
-const API_BASE = "https://verse-48io.onrender.com/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 async function safeJson(res) {
   const text = await res.text();
   if (!text) return {};
   try {
     return JSON.parse(text);
-  } catch (err) {
-    console.error("safeJson parse error:", err, "Raw response:", text);
+  } catch {
     return { raw: text };
   }
 }
@@ -16,7 +15,7 @@ function authFetch(path, opts = {}) {
   const token = localStorage.getItem("verse_token");
   const headers = { ...(opts.headers || {}) };
 
-  // If we're sending JSON (not FormData), set content type:
+  // JSON vs FormData
   if (opts.body && !(opts.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
@@ -27,6 +26,7 @@ function authFetch(path, opts = {}) {
   return fetch(`${API_BASE}${path}`, {
     ...opts,
     headers,
+    credentials: "include",
   });
 }
 
@@ -45,8 +45,8 @@ export const api = {
 
   getCurrentUser: () =>
     authFetch("/users/me")
-      .then(res => {
-        if (!res.ok) throw new Error(res.statusText || "Failed to fetch current user");
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText);
         return safeJson(res);
       }),
 
@@ -56,38 +56,32 @@ export const api = {
     return Promise.resolve({ message: "Logged out." });
   },
 
-  getUserById: (id) =>
-    authFetch(`/users/${id}`).then(safeJson),
-
+  getUserById: (id) => authFetch(`/users/${id}`).then(safeJson),
   followUser: (id) =>
     authFetch(`/users/${id}/follow`, { method: "PUT" }).then(safeJson),
 
   createPost: (formData) =>
     authFetch("/posts", { method: "POST", body: formData }).then(safeJson),
-
   likePost: (postId) =>
     authFetch(`/posts/like/${postId}`, { method: "PUT" }).then(safeJson),
-
-  toggleLike: (postId) =>
-    api.likePost(postId),
+  toggleLike: (postId) => api.likePost(postId),
 
   getFeed: (page = 1, limit = 10) =>
     authFetch(`/posts/feed?page=${page}&limit=${limit}`).then(safeJson),
 
-  getAllUsers: () =>
-    authFetch("/users").then(safeJson),
+  getAllUsers: () => authFetch("/users").then(safeJson),
 
   sendMessage: (formData) =>
     authFetch("/messages", { method: "POST", body: formData }).then(safeJson),
-
   getConversation: (userId) =>
     authFetch(`/messages/conversation/${userId}`).then(safeJson),
-
   markConversationRead: (userId) =>
-    authFetch(`/messages/conversation/${userId}/read`, { method: "PUT" }).then(safeJson),
+    authFetch(`/messages/conversation/${userId}/read`, {
+      method: "PUT",
+    }).then(safeJson),
 
   createPoll: (pollData) =>
-    authFetch("/polls", { method: "POST", body: pollData }).then(async res => {
+    authFetch("/polls", { method: "POST", body: pollData }).then(async (res) => {
       if (!res.ok) {
         const err = await res.text();
         throw new Error(err || "Error creating poll");
@@ -102,13 +96,15 @@ export const api = {
     }).then(safeJson),
 
   updatePollSubmission: (pollId, submissionData) =>
-    authFetch(`/polls/${pollId}/submission`, { method: "PUT", body: submissionData }).then(safeJson),
+    authFetch(`/polls/${pollId}/submission`, {
+      method: "PUT",
+      body: submissionData,
+    }).then(safeJson),
 
-  getPolls: () =>
-    authFetch("/polls").then(safeJson),
-
-  getPollById: (pollId) =>
-    authFetch(`/polls/${pollId}`).then(safeJson),
+  getPolls: () => authFetch("/polls").then(safeJson),
+  getPollById: (pollId) => authFetch(`/polls/${pollId}`).then(safeJson),
+  cancelPoll: () =>
+    authFetch("/polls/cancel", { method: "DELETE" }).then(safeJson),
 
   getUserProfile: () => {
     const stored = localStorage.getItem("verse_user");
@@ -116,9 +112,6 @@ export const api = {
     const { _id } = JSON.parse(stored);
     return authFetch(`/users/${_id}`).then(safeJson);
   },
-
-  cancelPoll: () =>
-    authFetch("/polls/cancel", { method: "DELETE" }).then(safeJson),
 };
 
 export default api;

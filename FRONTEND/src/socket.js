@@ -1,8 +1,7 @@
 // src/socket.js
 import { io } from "socket.io-client";
 
-const SOCKET_SERVER_URL =
-  import.meta.env.VITE_SOCKET_SERVER_URL || "https://verse-48io.onrender.com";
+const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL;
 
 const socket = io(SOCKET_SERVER_URL, {
   auth: {

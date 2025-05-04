@@ -1,3 +1,5 @@
+
+// controllers/challengeController.js
 import mongoose from "mongoose";
 import Challenge from "../Models/challengeModel.js";
 import User from "../Models/userModel.js";
