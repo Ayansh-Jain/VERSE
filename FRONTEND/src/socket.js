@@ -5,8 +5,9 @@ const SOCKET_SERVER_URL =
   import.meta.env.VITE_SOCKET_SERVER_URL || "https://verse-48io.onrender.com";
 
 const socket = io(SOCKET_SERVER_URL, {
-  // ensure the browser will send the HTTP-only cookie along with the handshake
-  withCredentials: true,
+  auth: {
+    token: localStorage.getItem("verse_token"),
+  },
   transports: ["websocket", "polling"],
 });
 
@@ -16,10 +17,6 @@ socket.on("connect", () => {
 
 socket.on("connect_error", (err) => {
   console.error("❌ Socket connection error:", err);
-  // You can implement retry logic here if you like, but
-  // with HTTP-only cookies in place you shouldn't hit auth errors
 });
-
-// No more manual token management or storage event listeners!
 
 export default socket;
