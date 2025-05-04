@@ -13,6 +13,7 @@ const SignIn = () => {
   const [errorMessages, setErrorMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Update form state
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }));
 
@@ -20,6 +21,7 @@ const SignIn = () => {
     e.preventDefault();
     setErrorMessages([]);
 
+    // Basic validation
     if (!formData.email || !formData.password) {
       setErrorMessages(["All fields are required!"]);
       return;
@@ -27,13 +29,13 @@ const SignIn = () => {
 
     setLoading(true);
     try {
-      // Destructure the API response correctly
+      // 1) Destructure exactly what the API returns
       const { token, user: apiUser } = await api.login({
         email: formData.email,
         password: formData.password,
       });
 
-      // Normalize following/followers to arrays of IDs
+      // 2) Normalize followers & following to arrays of ID strings
       const normalized = {
         ...apiUser,
         token,
@@ -45,11 +47,12 @@ const SignIn = () => {
         ),
       };
 
-      // Persist and update context
+      // 3) Persist to localStorage and update context
       localStorage.setItem("verse_token", token);
       localStorage.setItem("verse_user", JSON.stringify(normalized));
       setUser(normalized);
 
+      // 4) Navigate to profile
       navigate(`/profile/${apiUser._id}`);
     } catch (err) {
       console.error("SignIn error:", err);
@@ -102,6 +105,7 @@ const SignIn = () => {
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
+
         <p className="redirect">
           Don’t have an account? <Link to="/signup">Sign Up</Link>
         </p>

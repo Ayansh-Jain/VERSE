@@ -18,15 +18,15 @@ const SignUp = () => {
   const [errorMessages, setErrorMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
-  };
+  // Update form state
+  const handleChange = (e) =>
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessages([]);
 
+    // Basic validation
     const errors = [];
     if (!formData.username || !formData.email || !formData.password) {
       errors.push("All fields are required!");
@@ -41,14 +41,14 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      // Destructure the API response correctly
+      // 1) Destructure exactly what the API returns
       const { token, user: apiUser } = await api.signup({
         username: formData.username,
         email: formData.email,
         password: formData.password,
       });
 
-      // Normalize following/followers to arrays of IDs
+      // 2) Normalize followers & following to arrays of ID strings
       const normalized = {
         ...apiUser,
         token,
@@ -60,11 +60,12 @@ const SignUp = () => {
         ),
       };
 
-      // Persist and update context
+      // 3) Persist to localStorage and update context
       localStorage.setItem("verse_token", token);
       localStorage.setItem("verse_user", JSON.stringify(normalized));
       setUser(normalized);
 
+      // 4) Navigate to profile
       navigate(`/profile/${apiUser._id}`);
     } catch (err) {
       console.error("SignUp error:", err);
