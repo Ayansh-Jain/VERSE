@@ -59,14 +59,7 @@ const Profile = () => {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-      const data = await response.json();
+      const data = await api.getUserById(userId);
       // Merge isFollowing flag
       if (data.followers && user?.following) {
         data.followers = data.followers.map((f) => ({
@@ -162,16 +155,7 @@ const Profile = () => {
     formData.append("organization", newOrganization);
     formData.append("skills", JSON.stringify(newSkills));
     try {
-      const res = await fetch(`/api/users/${userId}/update-profile`, {
-        method: "PUT",
-        body: formData,
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Failed to update profile: ${errText}`);
-      }
-      const updatedProfile = await res.json();
+      const updatedProfile = await api.updateProfile(userId, formData);
       setProfile(updatedProfile);
       setShowEditModal(false);
     } catch (error) {

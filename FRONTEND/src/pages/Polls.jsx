@@ -52,7 +52,7 @@ const Polls = () => {
   useEffect(() => {
     (async () => {
       try {
-        const me = await api.getUserProfile();
+        const me = await api.getCurrentUser();
         setVersePoints(me.versePoints || 0);
       } catch (e) {
         console.error("Could not load versePoints:", e);
@@ -137,7 +137,7 @@ const Polls = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const userData = await api.getUserProfile();
+        const userData = await api.getCurrentUser();
         setVersePoints(userData.versePoints || 0);
         setCurrentUser(userData);
         
@@ -214,7 +214,7 @@ const Polls = () => {
         });
         
         // Refresh user data including versePoints
-        const userData = await api.getUserProfile();
+        const userData = await api.getCurrentUser();
         setVersePoints(userData.versePoints || 0);
       } catch (err) {
         console.error("Error polling for challenges:", err);
@@ -272,7 +272,7 @@ const Polls = () => {
         setVersePoints(response.versePoints);
       } else {
         // Otherwise get from user profile
-        const userData = await api.getUserProfile();
+        const userData = await api.getCurrentUser();
         setVersePoints(userData.versePoints);
         localStorage.setItem("user-verse", JSON.stringify(userData));
         setCurrentUser(userData);
@@ -361,7 +361,7 @@ const Polls = () => {
       }, 1000); // Wait 1 second before advancing
       
       // Refresh user data to get updated versePoints (for voting)
-      const userData = await api.getUserProfile();
+      const userData = await api.getCurrentUser();
       setVersePoints(userData.versePoints);
       
     } catch (err) {
