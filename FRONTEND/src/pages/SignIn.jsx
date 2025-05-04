@@ -4,7 +4,12 @@ import "../styles/Auth.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
-
+const idOf = (u) => {
+  if (typeof u === "string") return u;
+  if (u?._id) return u._id;
+  // For Mongoose ObjectId
+  return u.toString();
+};
 const SignIn = () => {
   const { setUser } = useAuth();
   const navigate = useNavigate();
@@ -37,15 +42,11 @@ const SignIn = () => {
 
       // 2) Normalize followers & following to arrays of ID strings
       const normalized = {
-        ...apiUser,
-        token,
-        following: (apiUser.following || []).map((u) =>
-          typeof u === "string" ? u : u._id
-        ),
-        followers: (apiUser.followers || []).map((u) =>
-          typeof u === "string" ? u : u._id
-        ),
-      };
+             ...apiUser,
+             token,
+             following: (apiUser.following || []).map(idOf),
+             followers: (apiUser.followers || []).map(idOf),
+         };
 
       // 3) Persist to localStorage and update context
       localStorage.setItem("verse_token", token);
