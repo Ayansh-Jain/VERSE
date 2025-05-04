@@ -1,6 +1,6 @@
-// routes/pollRoutes.js
 import express from "express";
-import multer from "multer";
+import protectRoute from "../middlewares/protectRoute.js";
+import upload from "../middlewares/uploadCloudinary.js"; // NEW
 import {
   createPoll,
   updatePollSubmission,
@@ -10,32 +10,35 @@ import {
   finalizePoll,
   cancelPoll,
 } from "../controllers/pollController.js";
-import protectRoute from "../middlewares/protectRoute.js";
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "public/uploads/"),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
-});
-const upload = multer({ storage });
 
 const router = express.Router();
 
-// Create a new challenge; challenger's image uploaded under "challengerSubmission"
-router.post("/", protectRoute, upload.single("challengerSubmission"), createPoll);
+// Create a new challenge; challenger's image under "challengerSubmission"
+router.post(
+  "/",
+  protectRoute,
+  upload.single("challengerSubmission"),   // now Cloudinary
+  createPoll
+);
 
-// Update challenged user's submission; image uploaded under "challengedSubmission"
-router.put("/:pollId/submission", protectRoute, upload.single("challengedSubmission"), updatePollSubmission);
+// Update challenged user's submission
+router.put(
+  "/:pollId/submission",
+  protectRoute,
+  upload.single("challengedSubmission"),   // now Cloudinary
+  updatePollSubmission
+);
 
 // Vote on a challenge
 router.put("/:pollId/vote", protectRoute, votePoll);
 
-// Finalize a challenge (determine winner and award points)
+// Finalize a challenge
 router.put("/:pollId/finalize", protectRoute, finalizePoll);
 
 // Cancel a pending challenge
 router.delete("/cancel", protectRoute, cancelPoll);
 
-// Get all challenges (active and pending from last 24 hours)
+// Get all challenges
 router.get("/", protectRoute, getPolls);
 
 // Get a specific challenge by id

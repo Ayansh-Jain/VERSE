@@ -1,8 +1,8 @@
-
 // controllers/challengeController.js
 import mongoose from "mongoose";
 import Challenge from "../Models/challengeModel.js";
 import User from "../Models/userModel.js";
+
 export const startChallenge = async (req, res) => {
   try {
     let { skill } = req.body;
@@ -13,12 +13,11 @@ export const startChallenge = async (req, res) => {
 
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: "Challenger not found." });
-
     if (user.versePoints < 10) {
       return res.status(400).json({ message: "Not enough versePoints to challenge." });
     }
 
-    // Check daily challenge count for challenger (max 3 per day)
+    // Daily limit
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const challengeCount = await Challenge.countDocuments({
@@ -30,40 +29,35 @@ export const startChallenge = async (req, res) => {
       return res.status(400).json({ message: "Maximum 3 challenges per day reached." });
     }
 
-    // Search for a random opponent with the required skill and similar versePoints
+    // Find random opponent
     const searchOpponent = async (range) => {
       return await User.aggregate([
         {
           $match: {
             _id: { $ne: new mongoose.Types.ObjectId(user._id) },
             skills: { $in: [skill] },
-            versePoints: { $gte: user.versePoints - range, $lte: user.versePoints + range }
-          }
+            versePoints: { $gte: user.versePoints - range, $lte: user.versePoints + range },
+          },
         },
-        { $sample: { size: 1 } }
+        { $sample: { size: 1 } },
       ]);
     };
 
     let range = 10;
     let opponentResults = await searchOpponent(range);
-    
     if (opponentResults.length === 0) {
       range = 20;
       opponentResults = await searchOpponent(range);
     }
-
     if (opponentResults.length === 0) {
       return res.status(404).json({ message: "No opponent found. Try again later." });
     }
 
     const opponent = await User.findById(opponentResults[0]._id);
-    
-    // Check if opponent has versePoints to participate
     if (opponent.versePoints < 10) {
       return res.status(400).json({ message: "Selected opponent doesn't have enough versePoints." });
     }
 
-    // Check daily challenge count for opponent (max 3 per day)
     const opponentChallengeCount = await Challenge.countDocuments({
       opponent: opponent._id,
       createdAt: { $gte: startOfDay },
@@ -72,31 +66,30 @@ export const startChallenge = async (req, res) => {
       return res.status(400).json({ message: "Selected opponent has reached maximum challenges for today." });
     }
 
-    const challengerImage = req.file ? `/uploads/${req.file.filename}` : "";
+    // Use Cloudinary URL if uploaded
+    const challengerImage = req.file ? req.file.path : "";
+
     const newChallenge = new Challenge({
       skill,
       challenger: user._id,
-      opponent: opponent._id,
+      opponent:   opponent._id,
       challengerImage,
       opponentImage: "",
       status: "open",
-      createdAt: new Date()
     });
 
-    // Deduct versePoints from both users
-    user.versePoints -= 10;
+    // Deduct points
+    user.versePoints     -= 10;
     opponent.versePoints -= 10;
-    
     await user.save();
     await opponent.save();
     await newChallenge.save();
 
     const attemptsLeft = maxChallenges - challengeCount - 1;
-
     res.status(200).json({
       message: "Challenge started!",
       challenge: newChallenge,
-      attemptsLeft
+      attemptsLeft,
     });
   } catch (error) {
     console.error("startChallenge error:", error);
@@ -105,32 +98,31 @@ export const startChallenge = async (req, res) => {
 };
 
 /**
- * Submit opponent's image for a challenge.
+ * Submit opponent's image/video for a challenge.
  */
 export const submitOpponentImage = async (req, res) => {
   try {
     const { challengeId } = req.body;
-    const opponentImage = req.file ? `/uploads/${req.file.filename}` : "";
-    
     const challenge = await Challenge.findById(challengeId);
     if (!challenge) return res.status(404).json({ message: "Challenge not found" });
 
-    // Verify the requesting user is actually the opponent
     if (challenge.opponent.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Only the opponent can submit their image" });
     }
 
-    challenge.opponentImage = opponentImage;
-    // Once opponent uploads image, mark challenge as closed so voting can begin
-    challenge.status = "closed";
-    await challenge.save();
+    // Use Cloudinary URL
+    if (req.file) {
+      challenge.opponentImage = req.file.path;
+      challenge.status        = "closed";
+      await challenge.save();
+    }
 
     res.status(200).json({ message: "Image submitted", challenge });
   } catch (error) {
+    console.error("submitOpponentImage error:", error);
     res.status(500).json({ message: error.message });
   }
 };
-
 /**
  * Vote on a challenge.
  * Earns 1 versePoint per vote (max 10 per day) for the voter.

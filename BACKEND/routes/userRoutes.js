@@ -11,6 +11,7 @@ import {
   updateProfilePicture,
   followUser,
 } from "../controllers/userController.js";
+import upload from "../middlewares/uploadCloudinary.js";
 import protectRoute from "../middlewares/protectRoute.js";
 
 const router = express.Router();
@@ -20,8 +21,18 @@ router.post("/login", login);
 router.post("/logout", logout);
 router.get("/me", protectRoute, getCurrentUser);
 router.get("/:id", protectRoute, getUserById);
-router.put("/:id/update-profile", protectRoute, uploadProfilePic, updateProfilePicture);
+
+// ⏩ Swap disk uploadProfilePic for Cloudinary upload:
+// router.put("/:id/update-profile", protectRoute, uploadProfilePic, updateProfilePicture);
+router.put(
+  "/:id/update-profile",
+  protectRoute,
+  upload.single("profilePic"),     // now uses Cloudinary under the hood
+  updateProfilePicture
+);
+
 router.put("/:id/follow", protectRoute, followUser);
+
 router.get(
   "/",
   protectRoute,
@@ -35,4 +46,5 @@ router.get(
     }
   }
 );
+
 export default router;

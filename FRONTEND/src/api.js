@@ -4,7 +4,6 @@
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
   "https://verse-48io.onrender.com/api";
-  export const UPLOADS_BASE = API_BASE.replace(/\/api\/?$/, "");
 async function safeJson(res) {
   const text = await res.text();
   if (!text) return {};

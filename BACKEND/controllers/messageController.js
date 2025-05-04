@@ -2,18 +2,21 @@
 import Message from "../Models/messageModel.js";
 import User from "../Models/userModel.js";
 
-// Send a new message
+/**
+ * Send a new message.
+ * If a file was uploaded (image/video), its Cloudinary URL is in req.file.path.
+ */
 export const sendMessage = async (req, res) => {
   try {
     if (!req.user?._id) {
       return res.status(401).json({ message: "User not authenticated" });
     }
     const { receiver, text } = req.body;
-    const fileUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    // Use Cloudinary URL if file was uploaded
+    const fileUrl = req.file ? req.file.path : null;
 
-    // Create and save message
     const newMessage = new Message({
-      sender: req.user._id,
+      sender:  req.user._id,
       receiver,
       text,
       file: fileUrl,
@@ -21,10 +24,10 @@ export const sendMessage = async (req, res) => {
     });
     await newMessage.save();
 
-    // Populate sender details for profilePic & username
+    // Populate sender's username & profilePic
     await newMessage.populate("sender", "username profilePic");
 
-    // Emit via Socket.IO
+    // Emit the message to both sender and receiver
     const io = req.app.get("socketio");
     io.to(receiver).emit("receiveMessage", newMessage);
     io.to(req.user._id.toString()).emit("receiveMessage", newMessage);
@@ -36,31 +39,32 @@ export const sendMessage = async (req, res) => {
   }
 };
 
-// Get conversation between authenticated user and another user
+/**
+ * Get the conversation between the current user and another user.
+ * Marks any unread incoming messages as read.
+ */
 export const getConversation = async (req, res) => {
   try {
     const { userId } = req.params;
     const me = req.user._id.toString();
 
-    // Fetch messages in chronological order
     const msgs = await Message.find({
       $or: [
-        { sender: me, receiver: userId },
-        { sender: userId, receiver: me },
+        { sender:  me, receiver: userId },
+        { sender:  userId, receiver: me },
       ],
     })
-      .populate("sender", "username profilePic")
+      .populate("sender",   "username profilePic")
       .populate("receiver", "username profilePic")
       .sort({ createdAt: 1 });
 
-    // Mark any unread incoming messages as read
-    const unreadMessages = await Message.updateMany(
+    // Mark unread incoming messages as read
+    const unread = await Message.updateMany(
       { sender: userId, receiver: me, read: false },
       { $set: { read: true } }
     );
 
-    // Emit read receipt if messages were marked as read
-    if (unreadMessages.nModified > 0 || unreadMessages.modifiedCount > 0) {
+    if (unread.nModified > 0 || unread.modifiedCount > 0) {
       const io = req.app.get("socketio");
       io.to(userId).emit("messages_read", { by: me, from: userId });
     }
@@ -72,35 +76,35 @@ export const getConversation = async (req, res) => {
   }
 };
 
-// Get list of conversation threads with unread counts
+/**
+ * Get list of conversation threads (one per partner),
+ * including the latest message and unread count.
+ */
 export const getThreads = async (req, res) => {
   try {
     const me = req.user._id.toString();
 
-    // Fetch all messages involving me, sorted by most recent update
     const allMsgs = await Message.find({
       $or: [{ sender: me }, { receiver: me }],
     })
-      .populate("sender", "username profilePic")
+      .populate("sender",   "username profilePic")
       .populate("receiver", "username profilePic")
       .sort({ updatedAt: -1 });
 
-    // Build unique partner list with latest message for each
+    // Build map of partnerId → thread info
     const threadsMap = new Map();
     allMsgs.forEach((msg) => {
       const partner =
         msg.sender._id.toString() === me ? msg.receiver : msg.sender;
-      
+
       if (!threadsMap.has(partner._id.toString())) {
-        // Store the latest message text or indicator
         let lastMessage = msg.text || "(attachment)";
-        if (lastMessage && lastMessage.length > 25) {
-          lastMessage = lastMessage.substring(0, 25) + "...";
+        if (lastMessage.length > 25) {
+          lastMessage = lastMessage.slice(0, 25) + "...";
         }
-        
         threadsMap.set(partner._id.toString(), {
-          _id: partner._id,
-          username: partner.username,
+          _id:       partner._id,
+          username:  partner.username,
           profilePic: partner.profilePic,
           lastMessage,
           updatedAt: msg.updatedAt,
@@ -108,7 +112,7 @@ export const getThreads = async (req, res) => {
       }
     });
 
-    // Attach unread counts
+    // Add unread counts
     const threadEntries = await Promise.all(
       Array.from(threadsMap.values()).map(async (thread) => {
         const count = await Message.countDocuments({
@@ -120,7 +124,7 @@ export const getThreads = async (req, res) => {
       })
     );
 
-    // Sort by threads with unread messages first, then by most recent
+    // Sort: unread first, then by most recent
     threadEntries.sort((a, b) => {
       if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
       if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
@@ -134,7 +138,9 @@ export const getThreads = async (req, res) => {
   }
 };
 
-// Mark all messages from a specific sender as read
+/**
+ * Mark all messages from a specific sender as read.
+ */
 export const markConversationRead = async (req, res) => {
   try {
     const me = req.user._id.toString();
@@ -145,15 +151,14 @@ export const markConversationRead = async (req, res) => {
       { $set: { read: true } }
     );
 
-    // Notify via Socket.IO (only if messages were actually updated)
     if (result.nModified > 0 || result.modifiedCount > 0) {
       const io = req.app.get("socketio");
       io.to(userId).emit("messages_read", { by: me, from: userId });
     }
 
-    res.status(200).json({ 
-      message: "Messages marked as read", 
-      modifiedCount: result.nModified || result.modifiedCount 
+    res.status(200).json({
+      message: "Messages marked as read",
+      modifiedCount: result.nModified || result.modifiedCount,
     });
   } catch (error) {
     console.error("markConversationRead error:", error);

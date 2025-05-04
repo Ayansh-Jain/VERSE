@@ -1,14 +1,9 @@
-//controllers/userController.js
 import User from "../Models/userModel.js";
-import upload from "../middlewares/upload.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES = "20d";
-
-// Multer middleware for profile picture upload
-export const uploadProfilePic = upload.single("profilePic");
 
 export const getCurrentUser = async (req, res) => {
   try {
@@ -56,7 +51,7 @@ export const updateProfilePicture = async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    if (req.file) user.profilePic = `/uploads/${req.file.filename}`;
+    if (req.file) user.profilePic = req.file.path;
     if (req.body.bio !== undefined) user.bio = req.body.bio;
     if (req.body.organization !== undefined) user.organization = req.body.organization;
     if (req.body.skills !== undefined) user.skills = JSON.parse(req.body.skills);
@@ -156,7 +151,6 @@ export const login = async (req, res) => {
 };
 
 export const logout = async (req, res) => {
-  // Token-based auth: logout is client-side only
   return res.status(200).json({ message: "Logged out successfully." });
 };
 

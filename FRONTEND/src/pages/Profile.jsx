@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import Modal from "../components/Modal";
 import "../styles/Profile.css";
-import { api,UPLOADS_BASE} from "../api";
+import { api} from "../api";
 import { useAuth } from "../context/AuthContext"; // Import global auth context
 
 const availableSkills = [
@@ -266,7 +266,7 @@ const Profile = () => {
         <div className="profile-header">
           <div className="profile-pic">
             <img
-              src={`${UPLOADS_BASE}${profile.profilePic}` || "/assets/noprofile.jpg"}
+              src={profile.profilePic || "/assets/noprofile.jpg"}
               alt="Profile"
               className="profile-image"
             />
@@ -350,7 +350,7 @@ const Profile = () => {
                 <div key={`${post._id}-${index}`} className="post-minimized">
                   {post.img ? (
                     <img
-                      src={`${UPLOADS_BASE}${post.img}`}
+                      src={post.img}
                       alt="Post thumbnail"
                       className="post-thumbnail"
                     />
@@ -411,7 +411,7 @@ const Profile = () => {
               >
                 <div className="profile-follow-card">
                   <img
-                    src={`${UPLOADS_BASE}${follower.profilePic}`|| "/assets/noprofile.jpg"}
+                    src={follower.profilePic || "/assets/noprofile.jpg"}
                     alt="avatar"
                     className="follower-avatar"
                   />
@@ -478,7 +478,7 @@ const Profile = () => {
               >
                 <div className="profile-follow-card">
                   <img
-                    src={`${UPLOADS_BASE}${u.profilePic}` || "/assets/noprofile.jpg"}
+                    src={u.profilePic || "/assets/noprofile.jpg"}
                     alt="avatar"
                     className="follower-avatar"
                   />
@@ -646,7 +646,7 @@ const Profile = () => {
                 <div className="profile-pic-modal">
                   <img
                     src={
-                      `${UPLOADS_BASE}${selectedFollowerProfile.profilePic}` ||
+                      selectedFollowerProfile.profilePic ||
                       "/assets/noprofile.jpg"
                     }
                     alt="Profile"
@@ -715,7 +715,7 @@ const Profile = () => {
                       >
                         {post.img ? (
                           <img
-                            src={`${UPLOADS_BASE}${post.img}`}
+                            src={post.img}
                             alt="Post thumbnail"
                             className="post-thumbnail-modal"
                           />
