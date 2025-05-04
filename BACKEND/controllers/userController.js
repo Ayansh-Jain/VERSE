@@ -1,84 +1,204 @@
-import Post from "../Models/postModel.js";
 import User from "../Models/userModel.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
-// Create post — image/video upload field “img” via Cloudinary
-export const createPost = async (req, res) => {
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES = "20d";
+
+// Get the currently authenticated user
+export const getCurrentUser = async (req, res) => {
   try {
-    const { text } = req.body;
-    const imgUrl = req.file ? req.file.path : null;
+    const me = await User.findById(req.user._id)
+      .select("-password")
+      .populate("followers", "username profilePic")
+      .populate("following", "username profilePic")
+      .populate({ path: "posts", select: "img text" });
 
-    const newPost = new Post({
-      postedBy: req.user._id,
-      text,
-      img: imgUrl,
-    });
-    await newPost.save();
-
-    // Add post ID to user
-    await User.findByIdAndUpdate(req.user._id, {
-      $push: { posts: newPost._id },
-    });
-
-    res.status(201).json(newPost);
-  } catch (error) {
-    console.error("createPost error:", error);
-    res.status(500).json({ message: error.message });
+    if (!me) {
+      return res.status(404).json({ message: "User not found." });
+    }
+    res.status(200).json(me);
+  } catch (err) {
+    console.error("getCurrentUser error:", err);
+    res.status(500).json({ message: "Server error." });
   }
 };
 
-// Fetch feed: posts by following first, then others
-export const getFeed = async (req, res) => {
+// Get any user by ID
+export const getUserById = async (req, res) => {
   try {
-    const page  = parseInt(req.query.page)  || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip  = (page - 1) * limit;
+    const userFound = await User.findById(req.params.id)
+      .select("-password")
+      .populate("followers", "username profilePic")
+      .populate("following", "username profilePic")
+      .populate({ path: "posts", select: "img text" });
 
-    const feedUsers = req.user.following.map((id) => id.toString());
-    feedUsers.push(req.user._id.toString());
-
-    const followingPosts = await Post.find({
-      postedBy: { $in: feedUsers },
-    })
-      .populate("postedBy", "username profilePic")
-      .sort({ createdAt: -1 });
-
-    const nonFollowingPosts = await Post.find({
-      postedBy: { $nin: feedUsers },
-    })
-      .populate("postedBy", "username profilePic")
-      .sort({ createdAt: -1 });
-
-    const allPosts = [...followingPosts, ...nonFollowingPosts];
-    const paginated = allPosts.slice(skip, skip + limit);
-
-    res.status(200).json(paginated);
-  } catch (error) {
-    console.error("getFeed error:", error);
-    res.status(500).json({ message: error.message });
+    if (!userFound) {
+      return res.status(404).json({ message: "User not found." });
+    }
+    res.status(200).json(userFound);
+  } catch (err) {
+    console.error("getUserById error:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
-// Like / Unlike a post
-export const likePost = async (req, res) => {
+// Update profile picture, bio, organization, skills
+export const updateProfilePicture = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ message: "Post not found." });
+    console.log("🔍 REQ.FILE:", req.file);
+    const userId = req.params.id;
+    if (userId !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized." });
     }
 
-    const userId = req.user._id;
-    const isLiked = post.likes.some((id) => id.toString() === userId.toString());
-    const update  = isLiked
-      ? { $pull:   { likes: userId } }
-      : { $addToSet: { likes: userId } };
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
 
-    const updatedPost = await Post.findByIdAndUpdate(req.params.id, update, {
-      new: true,
+    // Cloudinary URL if uploaded
+    if (req.file) {
+      user.profilePic = req.file.path;
+    }
+    if (req.body.bio !== undefined) {
+      user.bio = req.body.bio;
+    }
+    if (req.body.organization !== undefined) {
+      user.organization = req.body.organization;
+    }
+    if (req.body.skills !== undefined) {
+      // Expecting a JSON-stringified array
+      user.skills = JSON.parse(req.body.skills);
+    }
+
+    await user.save();
+
+    // Return updated user (without password)
+    const updated = await User.findById(userId)
+      .select("-password")
+      .populate("followers", "username profilePic")
+      .populate("following", "username profilePic")
+      .populate({ path: "posts", select: "img text" });
+
+    res.status(200).json(updated);
+  } catch (err) {
+    console.error("updateProfilePicture error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Sign up a new user
+export const signup = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    if (!username || !email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Username, email, and password are required." });
+    }
+
+    if (await User.findOne({ email })) {
+      return res
+        .status(400)
+        .json({ message: "User with this email already exists." });
+    }
+
+    const newUser = await User.create({ username, email, password });
+    const token = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+
+    res.status(201).json({
+      token,
+      user: {
+        _id:       newUser._id,
+        username:  newUser.username,
+        email:     newUser.email,
+        profilePic:newUser.profilePic,
+        followers: newUser.followers,
+        following: newUser.following,
+      },
     });
+  } catch (err) {
+    console.error("signup error:", err);
+    res.status(500).json({ message: "Server error during signup." });
+  }
+};
 
-    res.status(200).json({ message: "Post updated.", likes: updatedPost.likes });
-  } catch (error) {
-    console.error("likePost error:", error);
-    res.status(500).json({ message: error.message });
+// Log in
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res
+        .status(401)
+        .json({ message: "Invalid email or password." });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ message: "Invalid email or password." });
+    }
+
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+
+    res.status(200).json({
+      token,
+      user: {
+        _id:       user._id,
+        username:  user.username,
+        email:     user.email,
+        profilePic:user.profilePic,
+        followers: user.followers,
+        following: user.following,
+      },
+    });
+  } catch (err) {
+    console.error("login error:", err);
+    res.status(500).json({ message: "Server error during login." });
+  }
+};
+
+// Logout (client-side only)
+export const logout = async (req, res) => {
+  res.status(200).json({ message: "Logged out successfully." });
+};
+
+// Follow / Unfollow a user
+export const followUser = async (req, res) => {
+  try {
+    const targetUser  = await User.findById(req.params.id);
+    const currentUser = await User.findById(req.user._id);
+
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const isFollowing = currentUser.following.includes(targetUser._id);
+    if (isFollowing) {
+      currentUser.following.pull(targetUser._id);
+      targetUser.followers.pull(currentUser._id);
+    } else {
+      currentUser.following.push(targetUser._id);
+      targetUser.followers.push(currentUser._id);
+    }
+
+    await currentUser.save();
+    await targetUser.save();
+
+    res.status(200).json({
+      message: isFollowing ? "Unfollowed successfully." : "Followed successfully.",
+    });
+  } catch (err) {
+    console.error("followUser error:", err);
+    res.status(500).json({ message: "Server error during follow/unfollow." });
   }
 };
