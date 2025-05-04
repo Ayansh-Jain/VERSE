@@ -115,7 +115,13 @@ export const api = {
       if (!res.ok) throw new Error(res.statusText || "Failed to fetch current user");
       return safeJson(res);
     });
+    
   },
+  updateProfile: (id, formData) =>
+    authFetch(`/users/${id}/update-profile`, {
+      method: "PUT",
+      body: formData
+    }).then(safeJson),
 };
 
 export default api;

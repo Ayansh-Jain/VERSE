@@ -167,41 +167,34 @@ const Profile = () => {
   const handleCreatePostSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
+  
     setIsSubmitting(true);
+    setError(null);
+  
     const formData = new FormData();
     formData.append("text", newPostText);
     if (newPostImage) formData.append("img", newPostImage);
+  
     try {
-      const res = await fetch("/api/posts", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-      const contentType = res.headers.get("content-type");
-      let data;
-      if (contentType && contentType.includes("application/json")) {
-        data = await res.json();
-      } else {
-        const text = await res.text();
-        throw new Error(`Server returned non-JSON: ${text}`);
-      }
-      if (res.ok) {
-        setProfile((prev) => ({
-          ...prev,
-          posts: [data, ...(prev.posts || [])],
-        }));
-        setNewPostText("");
-        setNewPostImage(null);
-        setShowCreatePostModal(false);
-        navigate(`/feed/${userId}`);
-      } else {
-        throw new Error(
-          data.message || "Something went wrong while creating post"
-        );
-      }
-    } catch (error) {
-      console.error("Error creating post:", error);
-      setError(`Error creating post: ${error.message}`);
+      // 1) Use your api helper (handles headers, base URL, JSON parsing)
+      const newPost = await api.createPost(formData);
+  
+      // 2) Update state
+      setProfile((prev) => ({
+        ...prev,
+        posts: [newPost, ...(prev.posts || [])],
+      }));
+  
+      // 3) Reset form
+      setNewPostText("");
+      setNewPostImage(null);
+      setShowCreatePostModal(false);
+  
+      // 4) Navigate if needed
+      navigate(`/feed/${userId}`);
+    } catch (err) {
+      console.error("Error creating post:", err);
+      setError(`Error creating post: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
