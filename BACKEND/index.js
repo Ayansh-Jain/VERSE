@@ -6,7 +6,8 @@ import helmet from "helmet";
 import http from "http";
 import jwt from "jsonwebtoken";
 import { Server as SocketIO } from "socket.io";
-
+import path from "path";
+import { fileURLToPath } from "url";
 import connectDB from "./db/connectDB.js";
 import userRoutes from "./routes/userRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
@@ -18,7 +19,8 @@ connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 // ─── CORS ───────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
   process.env.CLIENT_URL,                    // e.g. https://verse-frontend.onrender.com
@@ -43,7 +45,7 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // ─── STATIC UPLOADS ────────────────────────────────────────────────────────────
-app.use("/uploads", express.static("public/uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
 app.use("/api/users", userRoutes);
