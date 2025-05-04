@@ -1,5 +1,6 @@
 // src/routes/userRoutes.js
 import express from "express";
+import User from "../Models/userModel.js"; 
 import {
   getUserById,
   getCurrentUser,
