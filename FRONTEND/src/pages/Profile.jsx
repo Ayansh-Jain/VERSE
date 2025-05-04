@@ -164,41 +164,41 @@ const Profile = () => {
     }
   };
 
-  const handleCreatePostSubmit = async (e) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-  
-    setIsSubmitting(true);
-    setError(null);
-  
-    const formData = new FormData();
-    formData.append("text", newPostText);
-    if (newPostImage) formData.append("img", newPostImage);
-  
-    try {
-      // 1) Use your api helper (handles headers, base URL, JSON parsing)
-      const newPost = await api.createPost(formData);
-  
-      // 2) Update state
-      setProfile((prev) => ({
-        ...prev,
-        posts: [newPost, ...(prev.posts || [])],
-      }));
-  
-      // 3) Reset form
-      setNewPostText("");
-      setNewPostImage(null);
-      setShowCreatePostModal(false);
-  
-      // 4) Navigate if needed
-      navigate(`/feed/${userId}`);
-    } catch (err) {
-      console.error("Error creating post:", err);
-      setError(`Error creating post: ${err.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+ const handleCreatePostSubmit = async (e) => {
+  e.preventDefault();
+  if (isSubmitting) return;
+
+  setIsSubmitting(true);
+  setError(null);
+
+  const formData = new FormData();
+  formData.append("text", newPostText);
+  if (newPostImage) formData.append("img", newPostImage);
+
+  try {
+    // 1) Use your api helper (handles headers, base URL, JSON parsing)
+    const newPost = await api.createPost(formData);
+
+    // 2) Update state
+    setProfile((prev) => ({
+      ...prev,
+      posts: [newPost, ...(prev.posts || [])],
+    }));
+
+    // 3) Reset form
+    setNewPostText("");
+    setNewPostImage(null);
+    setShowCreatePostModal(false);
+
+    // 4) Navigate if needed
+    navigate(`/feed/${userId}`);
+  } catch (err) {
+    console.error("Error creating post:", err);
+    setError(`Error creating post: ${err.message}`);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   // Updated follow handler that uses AuthContext to update the current user's following list
   const handleFollowToggle = async (followerId) => {

@@ -117,6 +117,7 @@ export const api = {
     });
     
   },
+  
   updateProfile: (id, formData) =>
     authFetch(`/users/${id}/update-profile`, {
       method: "PUT",
