@@ -55,9 +55,9 @@ const Navbar = () => {
         {user && (
           <span className="navButtons" id="navLogout" onClick={handleLogout}>
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" className="nav-svg">
-  <path d="M16 17L21 12L16 7" stroke="white" />
-  <path d="M21 12H9" stroke="white" />
-  <path d="M12 5H5C4.44772 5 4 5.44772 4 6V18C4 18.5523 4.44772 19 5 19H12" stroke="white" />
+  <path d="M16 17L21 12L16 7" stroke="red" />
+  <path d="M21 12H9" stroke="red" />
+  <path d="M12 5H5C4.44772 5 4 5.44772 4 6V18C4 18.5523 4.44772 19 5 19H12" stroke="red" />
 </svg>
 <span className="nav-span">Logout</span>
           </span>

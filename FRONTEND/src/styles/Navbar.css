@@ -89,19 +89,22 @@
   }
 
   .nav-buttons {
-    flex-direction: row;
+    height: 10vh;
+    width: 100vw;
+    display: flex;
     flex-grow: 1;
     justify-content: space-around;
+    align-items: center;
   }
 
   .navButtons {
     font-size: 14px;
     color: white;
     font-family: "Montserrat";
-    text-transform: uppercase;
+  
   }
 
-  #navLogout {
+   #navLogout {
    margin-top:0vh;
     font-size: 14px;
     color: red;
