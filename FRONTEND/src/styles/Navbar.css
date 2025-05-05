@@ -87,12 +87,11 @@
   .nav-buttons {
     width: 100vw;
     height: 10vh;
-    margin-top: 0;
+    margin: 0;
     display: flex;
+    flex-direction: row;
     justify-content: space-around;
     align-items: center;
-   
-   
   }
 
   .navButtons {
