@@ -8,9 +8,9 @@ import { api } from "../api";
 const idOf = (u) => {
   if (typeof u === "string") return u;
   if (u?._id) return u._id;
-  // For Mongoose ObjectId
   return u.toString();
 };
+
 const SignUp = () => {
   const { setUser } = useAuth();
   const navigate = useNavigate();
@@ -24,7 +24,6 @@ const SignUp = () => {
   const [errorMessages, setErrorMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Update form state
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -32,7 +31,6 @@ const SignUp = () => {
     e.preventDefault();
     setErrorMessages([]);
 
-    // Basic validation
     const errors = [];
     if (!formData.username || !formData.email || !formData.password) {
       errors.push("All fields are required!");
@@ -47,27 +45,28 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      // 1) Destructure exactly what the API returns
-      const { token, user: apiUser } = await api.signup({
+      // api.signup now returns { token, ...userFields }
+      const response = await api.signup({
         username: formData.username,
         email: formData.email,
         password: formData.password,
       });
 
-      // 2) Normalize followers & following to arrays of ID strings
-      const normalized = {
-            ...apiUser,
-           token,
-            following: (apiUser.following || []).map(idOf),
-             followers: (apiUser.followers || []).map(idOf),
-         };
+      // pull out token and treat the rest as the user
+      const { token, ...apiUser } = response;
 
-      // 3) Persist to localStorage and update context
+      // normalize any ObjectIds to strings
+      const normalized = {
+        ...apiUser,
+        token,
+        following: (apiUser.following || []).map(idOf),
+        followers: (apiUser.followers || []).map(idOf),
+      };
+
       localStorage.setItem("verse_token", token);
       localStorage.setItem("verse_user", JSON.stringify(normalized));
       setUser(normalized);
 
-      // 4) Navigate to profile
       navigate(`/profile/${apiUser._id}`);
     } catch (err) {
       console.error("SignUp error:", err);

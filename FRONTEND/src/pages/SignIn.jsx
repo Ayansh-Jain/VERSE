@@ -4,12 +4,13 @@ import "../styles/Auth.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
+
 const idOf = (u) => {
   if (typeof u === "string") return u;
   if (u?._id) return u._id;
-  // For Mongoose ObjectId
   return u.toString();
 };
+
 const SignIn = () => {
   const { setUser } = useAuth();
   const navigate = useNavigate();
@@ -18,7 +19,6 @@ const SignIn = () => {
   const [errorMessages, setErrorMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Update form state
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }));
 
@@ -26,7 +26,6 @@ const SignIn = () => {
     e.preventDefault();
     setErrorMessages([]);
 
-    // Basic validation
     if (!formData.email || !formData.password) {
       setErrorMessages(["All fields are required!"]);
       return;
@@ -34,26 +33,26 @@ const SignIn = () => {
 
     setLoading(true);
     try {
-      // 1) Destructure exactly what the API returns
-      const { token, user: apiUser } = await api.login({
+      // api.login now returns { token, ...userFields }
+      const response = await api.login({
         email: formData.email,
         password: formData.password,
       });
 
-      // 2) Normalize followers & following to arrays of ID strings
-      const normalized = {
-             ...apiUser,
-             token,
-             following: (apiUser.following || []).map(idOf),
-             followers: (apiUser.followers || []).map(idOf),
-         };
+      // pull out token and treat the rest as the user
+      const { token, ...apiUser } = response;
 
-      // 3) Persist to localStorage and update context
+      const normalized = {
+        ...apiUser,
+        token,
+        following: (apiUser.following || []).map(idOf),
+        followers: (apiUser.followers || []).map(idOf),
+      };
+
       localStorage.setItem("verse_token", token);
       localStorage.setItem("verse_user", JSON.stringify(normalized));
       setUser(normalized);
 
-      // 4) Navigate to profile
       navigate(`/profile/${apiUser._id}`);
     } catch (err) {
       console.error("SignIn error:", err);
