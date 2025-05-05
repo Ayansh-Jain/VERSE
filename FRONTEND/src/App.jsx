@@ -11,7 +11,6 @@ import AuthLayout from "./components/AuthLayout";
 import Layout from "./components/Layout";
 import { useAuth } from "./context/AuthContext";
 import OAuthSuccess from "./pages/OAuthSuccess";
-
 function App() {
   const { user, loading } = useAuth();
 
