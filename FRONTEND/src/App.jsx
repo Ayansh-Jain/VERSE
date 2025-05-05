@@ -10,6 +10,7 @@ import Message from "./pages/Message";
 import AuthLayout from "./components/AuthLayout";
 import Layout from "./components/Layout";
 import { useAuth } from "./context/AuthContext";
+import OAuthSuccess from "./context/oAuthSuccess";
 
 function App() {
   const { user, loading } = useAuth();
@@ -30,6 +31,7 @@ function App() {
       <Route element={<AuthLayout />}>
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/oauth/success" element={<OAuthSuccess />} />
       </Route>
 
       {/* App Layout & Protected Pages */}

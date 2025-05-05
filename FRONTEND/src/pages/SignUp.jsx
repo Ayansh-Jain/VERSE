@@ -1,10 +1,10 @@
-// src/pages/SignUp.jsx
 import { useState } from "react";
 import "../styles/Auth.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 
+const OAUTH_BASE = import.meta.env.VITE_API_BASE_URL || "https://verse-48io.onrender.com";
 const idOf = (u) => {
   if (typeof u === "string") return u;
   if (u?._id) return u._id;
@@ -45,17 +45,13 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      // api.signup now returns { token, ...userFields }
       const response = await api.signup({
         username: formData.username,
         email: formData.email,
         password: formData.password,
       });
 
-      // pull out token and treat the rest as the user
       const { token, ...apiUser } = response;
-
-      // normalize any ObjectIds to strings
       const normalized = {
         ...apiUser,
         token,
@@ -81,7 +77,7 @@ const SignUp = () => {
       <div className="signup-card">
         <h2 className="signup-title">Sign Up</h2>
         <form className="signup-form" onSubmit={handleSubmit}>
-          <div className="form-group">
+        <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
               name="username"
@@ -140,10 +136,34 @@ const SignUp = () => {
               ))}
             </div>
           )}
-
           <button type="submit" className="signup-btn" disabled={loading}>
             {loading ? "Signing up..." : "Sign Up"}
           </button>
+
+          {/* OAuth Buttons */}
+          <div className="oauth-buttons">
+            <button
+              type="button"
+              className="oauth-btn google"
+              onClick={() => window.location.href = `${OAUTH_BASE}/auth/google`}
+            >
+              Sign Up with Google
+            </button>
+            <button
+              type="button"
+              className="oauth-btn facebook"
+              onClick={() => window.location.href = `${OAUTH_BASE}/auth/facebook`}
+            >
+              Sign Up with Facebook
+            </button>
+            <button
+              type="button"
+              className="oauth-btn twitter"
+              onClick={() => window.location.href = `${OAUTH_BASE}/auth/twitter`}
+            >
+              Sign Up with Twitter
+            </button>
+          </div>
 
           <p className="redirect">
             Already have an account? <Link to="/signin">Sign In</Link>
