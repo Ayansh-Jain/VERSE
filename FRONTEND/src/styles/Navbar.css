@@ -49,7 +49,7 @@
    transform: scale(1.03);
 }
 #navLogout{
-   margin-top: 40vh;
+   margin-top: auto;
 }
 #navLogout:hover{
     color:red ;
@@ -87,7 +87,7 @@
   .nav-buttons {
     width: 100vw;
     height: 10vh;
-    margin: 0;
+    
     display: flex;
     flex-direction: row;
     justify-content: space-around;
@@ -96,6 +96,7 @@
 
   .navButtons {
     font-size: 14px;
+    margin: 0;
   }
 
   /* Reset desktop-only spacing for logout */
