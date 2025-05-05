@@ -247,12 +247,12 @@
 @media (max-width: 768px) {
   .feed-container {
     flex-direction: column;
-    width: 100%;
+    width: 100vw;
     height: 90vh;
     padding: 0%;
   }
   .feed-section {
-    width: 100%;
+    width: 100vw;
     border-radius: 0%;
   }
   .suggested-followers {

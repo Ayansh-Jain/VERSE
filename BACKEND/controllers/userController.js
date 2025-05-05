@@ -47,7 +47,7 @@ export const getUserById = async (req, res) => {
 // Update profile picture, bio, organization, skills
 export const updateProfilePicture = async (req, res) => {
   try {
-    console.log("🔍 REQ.FILE:", req.file);
+    
     const userId = req.params.id;
     if (userId !== req.user._id.toString()) {
       return res.status(403).json({ message: "Unauthorized." });
