@@ -13,14 +13,15 @@ import userRoutes from "./routes/userRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import pollRoutes from "./routes/pollRoutes.js";
+import authRoutes from "./routes/authRoutes.js"; // NEW
+import passport from "passport"; 
 
 dotenv.config();
 connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
 // ─── CORS ───────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
   process.env.CLIENT_URL,                    // e.g. https://verse-frontend.onrender.com
@@ -48,6 +49,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
+app.use("/auth", authRoutes);  
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/messages", messageRoutes);
