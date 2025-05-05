@@ -168,14 +168,7 @@
   width: 40px;
   cursor: pointer;
 }
-.create-post-modal textarea
- {
-  padding: 8px;
-  border: 1px solid #555;
-  border-radius: 4px;
-  background: #333;
-  color: white;
-}
+
 .profile-top { 
   margin-bottom: 15px;
   display: flex;
@@ -386,7 +379,87 @@
 .suggested-followers-panel.mobile-visible {
   display: flex; /* Visible when mobileView is "following" */
 }
+.edit-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
+.edit-profile-form label {
+  font-weight: 600;
+  color: #ddd;
+}
+
+.edit-profile-form input[type="file"],
+.edit-profile-form input[type="text"],
+.edit-profile-form textarea {
+  padding: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: white;
+}
+
+.edit-profile-form textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.skills-dropdown-container {
+  position: relative;
+}
+
+.dropdown-toggle-button {
+  background: #333;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.skills-dropdown {
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 10px;
+  margin-top: 5px;
+}
+
+.skills-dropdown input {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: white;
+}
+
+.skills-options {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.skill-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+/* Response message */
+.profile-response {
+  color: #4caf50;
+  margin-bottom: 10px;
+}
+
+/* Modal action buttons block already styled as .modal-actions in your CSS */
+.modal-actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
 /* Mobile View Specific Styles */
 @media (max-width: 768px) {
   .profile-container {

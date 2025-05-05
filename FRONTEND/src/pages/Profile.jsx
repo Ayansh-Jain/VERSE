@@ -508,114 +508,125 @@ const Profile = () => {
 
       {/* Edit Profile Modal */}
       {showEditModal && (
-        <Modal onClose={() => setShowEditModal(false)}>
-          <h3>Edit Profile</h3>
-          <label htmlFor="profilePic">Profile Picture:</label>
-          <input
-            id="profilePic"
-            name="profilePic"
-            type="file"
-            accept="image/*"
-            onChange={(e) => setNewProfilePic(e.target.files[0])}
-          />
-          <label htmlFor="bio">Bio:</label>
-          <textarea
-            id="bio"
-            name="bio"
-            value={newBio}
-            onChange={(e) => setNewBio(e.target.value)}
-            placeholder="Tell us about yourself..."
-          />
-          <label htmlFor="organization">Organization:</label>
-          <input
-            id="organization"
-            name="organization"
-            type="text"
-            value={newOrganization}
-            onChange={(e) => setNewOrganization(e.target.value)}
-            placeholder="Your organization..."
-          />
-          {/* Skills Dropdown */}
-          <div className="skills-dropdown-container">
-            <button
-              type="button"
-              className="dropdown-toggle-button"
-              onClick={toggleSkillsDropdown}
-            >
-              {newSkills.length > 0 ? "Edit Skills" : "Select Skills"}
-            </button>
-            {showSkillsDropdown && (
-              <div className="skills-dropdown">
-                <input
-                  type="text"
-                  placeholder="Search skills..."
-                  value={skillInput}
-                  onChange={(e) => setSkillInput(e.target.value)}
-                />
-                <div className="skills-options">
-                  {availableSkills
-                    .filter((skill) =>
-                      skill.toLowerCase().includes(skillInput.toLowerCase())
-                    )
-                    .map((skill, index) => (
-                      <div key={index} className="skill-option">
-                        <input
-                          type="checkbox"
-                          id={`skill-${skill}`}
-                          checked={newSkills.includes(skill.toLowerCase())}
-                          onChange={() => handleSkillToggle(skill)}
-                        />
-                        <label htmlFor={`skill-${skill}`}>{skill}</label>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
+  <Modal onClose={() => setShowEditModal(false)}>
+    <h2>Edit Profile</h2>
+
+    <form onSubmit={handleUpdateProfile} className="edit-profile-form">
+      <label htmlFor="profilePic">Profile Picture:</label>
+      <input
+        id="profilePic"
+        name="profilePic"
+        type="file"
+        accept="image/*"
+        onChange={(e) => setNewProfilePic(e.target.files[0])}
+      />
+
+      <label htmlFor="bio">Bio:</label>
+      <textarea
+        id="bio"
+        name="bio"
+        value={newBio}
+        onChange={(e) => setNewBio(e.target.value)}
+        placeholder="Tell us about yourself..."
+      />
+
+      <label htmlFor="organization">Organization:</label>
+      <input
+        id="organization"
+        name="organization"
+        type="text"
+        value={newOrganization}
+        onChange={(e) => setNewOrganization(e.target.value)}
+        placeholder="Your organization..."
+      />
+
+      <label>Skills:</label>
+      <div className="skills-dropdown-container">
+        <button
+          type="button"
+          className="dropdown-toggle-button"
+          onClick={toggleSkillsDropdown}
+        >
+          {newSkills.length > 0 ? "Edit Skills" : "Select Skills"}
+        </button>
+
+        {showSkillsDropdown && (
+          <div className="skills-dropdown">
+            <input
+              type="text"
+              placeholder="Search skills..."
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+            />
+
+            <div className="skills-options">
+              {availableSkills
+                .filter((skill) =>
+                  skill.toLowerCase().includes(skillInput.toLowerCase())
+                )
+                .map((skill) => (
+                  <div key={skill} className="skill-option">
+                    <input
+                      type="checkbox"
+                      id={`skill-${skill}`}
+                      checked={newSkills.includes(skill.toLowerCase())}
+                      onChange={() => handleSkillToggle(skill)}
+                    />
+                    <label htmlFor={`skill-${skill}`}>{skill}</label>
+                  </div>
+                ))}
+            </div>
           </div>
-          <div className="modal-actions">
-            <button className="edit-button" onClick={handleUpdateProfile}>
-              Save
-            </button>
-            <button
-              className="edit-button"
-              onClick={() => setShowEditModal(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </Modal>
-      )}
+        )}
+      </div>
+
+      <div className="modal-actions">
+        <button type="submit" className="edit-button">
+          Save
+        </button>
+        <button
+          type="button"
+          className="edit-button"
+          onClick={() => setShowEditModal(false)}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </Modal>
+)}
+
 
       {/* Create Post Modal */}
       {showCreatePostModal && (
-        <Modal onClose={() => setShowCreatePostModal(false)}>
-          <h3>Create a New Post</h3>
-          <form  className="create-post-modal"onSubmit={handleCreatePostSubmit}>
-            <textarea
-              value={newPostText}
-              onChange={(e) => setNewPostText(e.target.value)}
-              placeholder="Caption..."
-            />
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setNewPostImage(e.target.files[0])}
-            />
-            <div className="modal-actions">
-              <button type="submit" className="edit-button">
-                Post
-              </button>
-              <button
-                type="button"
-                className="edit-button"
-                onClick={() => setShowCreatePostModal(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
+  <Modal onClose={() => setShowCreatePostModal(false)}>
+    <h2>Create New Post</h2>
+    <form onSubmit={handleCreatePostSubmit} className="create-post-form">
+      <label htmlFor="caption">Caption:</label>
+      <textarea
+        id="caption"
+        value={newPostText}
+        onChange={(e) => setNewPostText(e.target.value)}
+        placeholder="Write your caption..."
+        required
+      />
+
+      <label htmlFor="postImage">Upload Image:</label>
+      <input
+        type="file"
+        id="postImage"
+        accept="image/*"
+        onChange={(e) => setNewPostImage(e.target.files[0])}
+        required
+      />
+
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Posting..." : "Post"}
+      </button>
+    </form>
+  </Modal>
+)}
+
 
       {/* Share Profile Modal */}
       {showShareModal && (

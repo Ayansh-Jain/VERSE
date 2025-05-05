@@ -49,7 +49,7 @@
    transform: scale(1.03);
 }
 #navLogout{
-   margin-top: auto;
+   margin-top: 40vh;
 }
 #navLogout:hover{
     color:red ;
