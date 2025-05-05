@@ -166,6 +166,15 @@
   background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
   height: 40px;
   width: 40px;
+  cursor: pointer;
+}
+.create-post-modal textarea
+ {
+  padding: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: white;
 }
 .profile-top { 
   margin-bottom: 15px;

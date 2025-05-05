@@ -635,7 +635,7 @@ const Polls = () => {
             <div className="poll-cost-info">
               <span> This will cost 10 </span>
               <img src="/assets/coin_1369860.png" alt="Coin" className="coin-icon" />
-              <span> for both you and your opponent</span>
+              
             </div>
             
             <label htmlFor="skill">Skill:</label>

@@ -590,11 +590,11 @@ const Profile = () => {
       {showCreatePostModal && (
         <Modal onClose={() => setShowCreatePostModal(false)}>
           <h3>Create a New Post</h3>
-          <form onSubmit={handleCreatePostSubmit}>
+          <form  className="create-post-modal"onSubmit={handleCreatePostSubmit}>
             <textarea
               value={newPostText}
               onChange={(e) => setNewPostText(e.target.value)}
-              placeholder="Write something..."
+              placeholder="Caption..."
             />
             <input
               type="file"
