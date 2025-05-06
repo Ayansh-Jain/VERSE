@@ -11,25 +11,23 @@ const Feed = () => {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
 
-  // State for posts (infinite scroll)
+  // Posts state for infinite scroll
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const observer = useRef();
 
-  // State for suggested followers
+  // Suggestions state
   const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // State for Follower Profile Modal
+  // Follower Modals
   const [showFollowerModal, setShowFollowerModal] = useState(false);
   const [selectedFollowerProfile, setSelectedFollowerProfile] = useState(null);
-
-  // State for Follower Share Modal
   const [showFollowerShareModal, setShowFollowerShareModal] = useState(false);
 
-  // Utility: Shuffle an array (to randomize feed)
+  // Shuffle utility
   const shuffle = (array) => {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -38,7 +36,10 @@ const Feed = () => {
     return array;
   };
 
-  // Fetch feed posts and randomize them
+  // Detect video by extension
+  const isVideo = (url) => /\.(mp4|webm|ogg)$/i.test(url);
+
+  // Fetch posts
   useEffect(() => {
     const fetchPosts = async () => {
       setLoading(true);
@@ -47,11 +48,13 @@ const Feed = () => {
         if (newPosts.length === 0) {
           setHasMore(false);
         } else {
-          const randomizedPosts = shuffle(newPosts);
-          setPosts((prev) => [...prev, ...randomizedPosts]);
+          setPosts((prev) => [
+            ...prev,
+            ...shuffle(newPosts),
+          ]);
         }
-      } catch (error) {
-        console.error("Error fetching posts:", error);
+      } catch (err) {
+        console.error("Error fetching posts:", err);
       } finally {
         setLoading(false);
       }
@@ -59,14 +62,14 @@ const Feed = () => {
     fetchPosts();
   }, [page]);
 
-  // Infinite scroll observer for posts
+  // Infinite scroll
   const lastPostRef = useCallback(
     (node) => {
       if (loading) return;
       if (observer.current) observer.current.disconnect();
       observer.current = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && hasMore) {
-          setPage((prev) => prev + 1);
+          setPage((p) => p + 1);
         }
       });
       if (node) observer.current.observe(node);
@@ -74,111 +77,94 @@ const Feed = () => {
     [loading, hasMore]
   );
 
-  // Fetch all users for suggestions and exclude the current user.
-  // We do not map extra isFollowing here—use global user.following in render.
+  // Fetch suggested users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const allUsers = await api.getAllUsers();
-        if (Array.isArray(allUsers)) {
-          const suggestions = allUsers.filter((u) => u._id !== user._id);
-          setUsers(suggestions);
-        } else {
-          console.error("Unexpected response from getAllUsers:", allUsers);
-          setUsers([]);
-        }
-      } catch (error) {
-        console.error("Error fetching suggestions:", error.message || error);
+        const all = await api.getAllUsers();
+        setUsers(Array.isArray(all) ? all.filter((u) => u._id !== user._id) : []);
+      } catch (err) {
+        console.error("Error fetching suggestions:", err);
         setUsers([]);
-        // Optional: Retry after a few seconds if ECONNRESET
-        if (error.message && error.message.includes("ECONNRESET")) {
-          setTimeout(fetchUsers, 3000); // retry after 3 seconds
-        }
       }
     };
     fetchUsers();
   }, [user._id]);
-  
 
-  // Filter suggestions based on search query
+  // Filter suggestions
   const filteredUsers = users.filter((u) =>
     u.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Handler for toggling like on a post
+  // Like handler
   const handleLike = async (postId) => {
     try {
-      const updatedPost = await api.toggleLike(postId);
-      setPosts((prevPosts) =>
-        prevPosts.map((p) =>
-          p._id === postId
-            ? { ...p, likes: updatedPost.likes, postedBy: p.postedBy }
-            : p
+      const updated = await api.toggleLike(postId);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p._id === postId ? { ...p, likes: updated.likes } : p
         )
       );
-    } catch (error) {
-      console.error("Error liking post:", error);
+    } catch (err) {
+      console.error("Error liking post:", err);
     }
   };
 
-  // Handler for following a user from the feed
-  const handleFollow = async (userIdToFollow) => {
+  // Follow handler
+  const handleFollow = async (uid) => {
     try {
-      const resData = await api.followUser(userIdToFollow);
-      const isNowFollowing = resData.message === "Followed successfully.";
-      // Update global current user state and localStorage
+      const res = await api.followUser(uid);
+      const nowFollowing = res.message === "Followed successfully.";
       const updatedUser = { ...user };
-      if (isNowFollowing) {
-        if (!updatedUser.following.includes(userIdToFollow)) {
-          updatedUser.following.push(userIdToFollow);
-        }
+      if (nowFollowing) {
+        updatedUser.following.push(uid);
       } else {
-        updatedUser.following = updatedUser.following.filter((id) => id !== userIdToFollow);
+        updatedUser.following = updatedUser.following.filter((id) => id !== uid);
       }
       setUser(updatedUser);
       localStorage.setItem("user-verse", JSON.stringify(updatedUser));
-      // Update suggestions list so the button renders correctly
       setUsers((prev) =>
         prev.map((u) =>
-          u._id === userIdToFollow ? { ...u } : u
+          u._id === uid ? u : u
         )
       );
-    } catch (error) {
-      console.error("Error toggling follow:", error);
+    } catch (err) {
+      console.error("Error toggling follow:", err);
     }
   };
 
-  // Handler for clicking a follower card to open their profile modal
-  const handleFollowerCardClick = async (followerId) => {
+  // Open follower profile modal
+  const handleFollowerCardClick = async (fid) => {
     try {
-      const followerData = await api.getUserById(followerId);
-      setSelectedFollowerProfile(followerData);
+      const data = await api.getUserById(fid);
+      setSelectedFollowerProfile(data);
       setShowFollowerModal(true);
-    } catch (error) {
-      console.error("Error fetching follower profile:", error);
+    } catch (err) {
+      console.error("Error fetching follower profile:", err);
     }
   };
 
   return (
     <div className="feed-container">
       <section className="feed-section">
-        {posts.map((post, index) => (
+        {posts.map((post, idx) => (
           <div
-            key={`${post._id}-${index}`}
+            key={`${post._id}-${idx}`}
             className="post"
-            ref={posts.length === index + 1 ? lastPostRef : null}
+            ref={idx === posts.length - 1 ? lastPostRef : null}
           >
             <div className="post-header">
               <div className="post-header1">
-              <img
-                src={post.postedBy?.profilePic || "/assets/noprofile.jpg"}
-                alt="avatar"
-                className="post-avatar"
-              />
-              <span className="post-username">{post.postedBy?.username}</span></div>
-              {/* Follow button on post header if not current user */}
-              <div>{post.postedBy &&
-                post.postedBy._id !== user._id &&
+                <img
+                  src={post.postedBy?.profilePic || "/assets/noprofile.jpg"}
+                  alt="avatar"
+                  className="post-avatar"
+                />
+                <span className="post-username">
+                  {post.postedBy?.username}
+                </span>
+              </div>
+              {post.postedBy?._id !== user._id &&
                 !user.following.includes(post.postedBy._id) && (
                   <button
                     className="follow-button"
@@ -186,11 +172,19 @@ const Feed = () => {
                   >
                     Follow
                   </button>
-                )}</div>
+                )}
             </div>
             <div className="post-media">
               {post.img && (
-                <img src={post.img} alt="post" className="post-image" />
+                isVideo(post.img) ? (
+                  <video src={post.img} controls className="post-video" />
+                ) : (
+                  <img
+                    src={post.img}
+                    alt="post"
+                    className="post-image"
+                  />
+                )
               )}
             </div>
             <div className="post-actions">
@@ -224,13 +218,15 @@ const Feed = () => {
               key={u._id}
               className="follower-card"
               onClick={() => handleFollowerCardClick(u._id)}
-            > <div className="follower-card-info">
-              <img
-                src={u.profilePic || "/assets/noprofile.jpg"}
-                alt="avatar"
-                className="follower-avatar"
-              />
-              <span className="follower-username">{u.username}</span></div>
+            >
+              <div className="follower-card-info">
+                <img
+                  src={u.profilePic || "/assets/noprofile.jpg"}
+                  alt="avatar"
+                  className="follower-avatar"
+                />
+                <span className="follower-username">{u.username}</span>
+              </div>
               <button
                 className={`follow-button ${
                   user.following.includes(u._id) ? "following" : ""
@@ -255,22 +251,36 @@ const Feed = () => {
               <div className="profile-header-modal">
                 <div className="profile-pic-modal">
                   <img
-                    src={selectedFollowerProfile.profilePic || "/assets/noprofile.jpg"}
+                    src={
+                      selectedFollowerProfile.profilePic ||
+                      "/assets/noprofile.jpg"
+                    }
                     alt="Profile"
                     className="profile-image-modal"
                   />
                 </div>
                 <div className="profile-info-modal">
-                  <h2 className="username">{selectedFollowerProfile.username}</h2>
+                  <h2 className="username">
+                    {selectedFollowerProfile.username}
+                  </h2>
                   <div className="stats">
                     <p>
-                      <strong>{selectedFollowerProfile.posts?.length || 0}</strong> Posts
+                      <strong>
+                        {selectedFollowerProfile.posts?.length || 0}
+                      </strong>{" "}
+                      Posts
                     </p>
                     <p>
-                      <strong>{selectedFollowerProfile.followers?.length || 0}</strong> Followers
+                      <strong>
+                        {selectedFollowerProfile.followers?.length || 0}
+                      </strong>{" "}
+                      Followers
                     </p>
                     <p>
-                      <strong>{selectedFollowerProfile.following?.length || 0}</strong> Following
+                      <strong>
+                        {selectedFollowerProfile.following?.length || 0}
+                      </strong>{" "}
+                      Following
                     </p>
                   </div>
                 </div>
@@ -278,18 +288,20 @@ const Feed = () => {
               <div className="bio-section-modal">
                 <p>
                   <strong>Organization:</strong>{" "}
-                  {selectedFollowerProfile.organization || "Not specified."}
+                  {selectedFollowerProfile.organization ||
+                    "Not specified."}
                 </p>
                 <p>
                   <strong>Bio:</strong>{" "}
                   {selectedFollowerProfile.bio || "No bio added."}
                 </p>
               </div>
-              {/* Profile Actions (Message & Share) placed before posts */}
               <div className="profile-actions-modal">
                 <button
                   className="edit-button-modal"
-                  onClick={() => navigate(`/message/${selectedFollowerProfile._id}`)}
+                  onClick={() =>
+                    navigate(`/message/${selectedFollowerProfile._id}`)
+                  }
                 >
                   Message
                 </button>
@@ -300,17 +312,36 @@ const Feed = () => {
                   Share Profile
                 </button>
               </div>
-              {/* Follower's Posts Section */}
               <div className="follower-posts-modal">
                 <h3>Posts</h3>
-                {selectedFollowerProfile.posts && selectedFollowerProfile.posts.length > 0 ? (
+                {selectedFollowerProfile.posts &&
+                selectedFollowerProfile.posts.length > 0 ? (
                   <div className="posts-grid-modal">
                     {selectedFollowerProfile.posts.map((post, idx) => (
-                      <div key={post._id || idx} className="post-minimized-modal">
+                      <div
+                        key={post._id || idx}
+                        className="post-minimized-modal"
+                      >
                         {post.img ? (
-                          <img src={post.img} alt="Post thumbnail" className="post-thumbnail-modal" />
+                          isVideo(post.img) ? (
+                            <video
+                              src={post.img}
+                              controls
+                              className="post-thumbnail-modal"
+                            />
+                          ) : (
+                            <img
+                              src={post.img}
+                              alt="Post thumbnail"
+                              className="post-thumbnail-modal"
+                            />
+                          )
                         ) : (
-                          <div>{post.text ? post.text.slice(0, 20) + "..." : "No content"}</div>
+                          <div>
+                            {post.text
+                              ? post.text.slice(0, 20) + "..."
+                              : "No content"}
+                          </div>
                         )}
                       </div>
                     ))}
@@ -334,7 +365,10 @@ const Feed = () => {
             size={200}
           />
           <div className="modal-actions">
-            <button className="edit-button" onClick={() => setShowFollowerShareModal(false)}>
+            <button
+              className="edit-button"
+              onClick={() => setShowFollowerShareModal(false)}
+            >
               Close
             </button>
           </div>

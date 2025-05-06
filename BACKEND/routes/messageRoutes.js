@@ -1,3 +1,4 @@
+// routes/messageRoutes.js
 import express from "express";
 import multer from "multer";
 import protectRoute from "../middlewares/protectRoute.js";
@@ -28,7 +29,15 @@ const storage = new CloudinaryStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter(req, file, cb) {
+    // Allow images/videos only
+    if (/^image\/|^video\//.test(file.mimetype)) return cb(null, true);
+    cb(new Error("Only image and video files are allowed"));
+  },
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB size limit
+});
 
 const router = express.Router();
 

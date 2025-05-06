@@ -508,11 +508,60 @@ const Message = () => {
           </>
         )}
       </div>
-
       {showProfileModal && profileModalUser && (
         <Modal onClose={() => setShowProfileModal(false)}>
           <div className="profile-section-modal">
-            {/* ...same modal content as before... */}
+            <div className="scrollable-content-modal">
+              <div className="profile-header-modal">
+                <div className="profile-pic-modal">
+                  <img
+                    src={profileModalUser.profilePic || "/assets/noprofile.jpg"}
+                    alt="Profile"
+                    className="profile-image-modal"
+                  />
+                </div>
+                <div className="profile-info-modal">
+                  <h2 className="username">{profileModalUser.username}</h2>
+                  <div className="stats">
+                    <p>
+                      <strong>{profileModalUser.posts?.length || 0}</strong> Posts
+                    </p>
+                    <p>
+                      <strong>{profileModalUser.followers?.length || 0}</strong> Followers
+                    </p>
+                    <p>
+                      <strong>{profileModalUser.following?.length || 0}</strong> Following
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="bio-section-modal">
+                <p>
+                  <strong>Organization:</strong> {profileModalUser.organization || "Not specified."}
+                </p>
+                <p>
+                  <strong>Bio:</strong> {profileModalUser.bio || "No bio added."}
+                </p>
+              </div>
+              <div className="follower-posts-modal">
+                <h3>Posts</h3>
+                {profileModalUser.posts && profileModalUser.posts.length > 0 ? (
+                  <div className="posts-grid-modal">
+                    {profileModalUser.posts.map((post, idx) => (
+                      <div key={post._id || idx} className="post-minimized-modal">
+                        {post.img ? (
+                          <img src={post.img} alt="Post thumbnail" className="post-thumbnail-modal" />
+                        ) : (
+                          <div>{post.text ? post.text.slice(0, 20) + "..." : "No content"}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No posts available</p>
+                )}
+              </div>
+            </div>
           </div>
         </Modal>
       )}

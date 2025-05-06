@@ -1,6 +1,7 @@
+// routes/pollRoutes.js
 import express from "express";
 import protectRoute from "../middlewares/protectRoute.js";
-import upload from "../middlewares/uploadCloudinary.js"; // NEW
+import upload from "../middlewares/uploadCloudinary.js"; // Updated middleware with file validation
 import {
   createPoll,
   updatePollSubmission,

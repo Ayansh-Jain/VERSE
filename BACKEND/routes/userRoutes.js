@@ -7,7 +7,6 @@ import {
   signup,
   login,
   logout,
-
   updateProfilePicture,
   followUser,
 } from "../controllers/userController.js";
@@ -19,20 +18,25 @@ const router = express.Router();
 router.post("/signup", signup);
 router.post("/login", login);
 router.post("/logout", logout);
+
+// Get current logged-in user
 router.get("/me", protectRoute, getCurrentUser);
+
+// Get any user by ID
 router.get("/:id", protectRoute, getUserById);
 
-// ⏩ Swap disk uploadProfilePic for Cloudinary upload:
-// router.put("/:id/update-profile", protectRoute, uploadProfilePic, updateProfilePicture);
+// Update profile picture (accepts image OR video, up to 50MB)
 router.put(
   "/:id/update-profile",
   protectRoute,
-  upload.single("profilePic"),     // now uses Cloudinary under the hood
+  upload.single("profilePic"),
   updateProfilePicture
 );
 
+// Follow / unfollow a user
 router.put("/:id/follow", protectRoute, followUser);
 
+// List all users (excluding passwords)
 router.get(
   "/",
   protectRoute,

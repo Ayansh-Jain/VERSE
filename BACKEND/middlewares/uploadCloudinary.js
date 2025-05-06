@@ -7,7 +7,7 @@ dotenv.config();
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
@@ -26,4 +26,16 @@ const storage = new CloudinaryStorage({
   },
 });
 
-export default multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter(req, file, cb) {
+    // Allow only images and videos
+    if (/^image\/|^video\//.test(file.mimetype)) {
+      return cb(null, true);
+    }
+    cb(new Error("Only image and video files are allowed"));
+  },
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB file size limit
+});
+
+export default upload;

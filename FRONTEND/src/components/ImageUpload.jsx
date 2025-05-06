@@ -1,24 +1,23 @@
-// src/components/ImageUpload.jsx
 import { useState } from "react";
 import { api } from "./api";
 
 const ImageUpload = () => {
   const [caption, setCaption] = useState("");
-  const [image, setImage] = useState(null);
+  const [media, setMedia] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const formData = new FormData();
     formData.append("text", caption);
-    formData.append("img", image);
+    if (media) formData.append("img", media);
 
     try {
       await api.createPost(formData);
       setCaption("");
-      setImage(null);
+      setMedia(null);
     } catch (error) {
       console.error("Upload failed:", error);
     } finally {
@@ -36,8 +35,8 @@ const ImageUpload = () => {
         />
         <input
           type="file"
-          accept="image/*"
-          onChange={(e) => setImage(e.target.files[0])}
+          accept="image/*,video/*"
+          onChange={(e) => setMedia(e.target.files[0])}
         />
         <button type="submit" disabled={loading}>
           {loading ? "Uploading..." : "Share Post"}

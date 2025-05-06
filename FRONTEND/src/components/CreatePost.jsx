@@ -1,4 +1,3 @@
-// src/components/CreatePost.jsx
 import { useState } from "react";
 import { api } from "../api";
 import { useNavigate } from "react-router-dom";
@@ -6,20 +5,20 @@ import "../styles/CreatePost.css";
 
 const CreatePost = () => {
   const [text, setText] = useState("");
-  const [image, setImage] = useState(null);
+  const [media, setMedia] = useState(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData();
     formData.append("text", text);
-    if (image) formData.append("img", image);
+    if (media) formData.append("img", media);
     try {
       const res = await api.createPost(formData);
       if (res._id || res.text) {
         alert("Post created successfully!");
         setText("");
-        setImage(null);
+        setMedia(null);
         navigate("/feed");
       }
     } catch (error) {
@@ -38,8 +37,8 @@ const CreatePost = () => {
         />
         <input
           type="file"
-          accept="image/*"
-          onChange={(e) => setImage(e.target.files[0])}
+          accept="image/*,video/*"
+          onChange={(e) => setMedia(e.target.files[0])}
         />
         <button type="submit">Post</button>
       </form>
