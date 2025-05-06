@@ -15,7 +15,7 @@
   padding:20px;
   border-radius: 8px;
   box-sizing: border-box;
-  max-height: 90vh;   /* vertical limit */
+  max-height: calc(var(--vh) * 90);   /* vertical limit */
   overflow-y: auto;   /* scroll if content too tall */
   color: white;
   font-family: "Montserrat", sans-serif;

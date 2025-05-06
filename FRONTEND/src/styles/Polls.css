@@ -11,7 +11,7 @@
   width: 85vw;
   font-family: "Montserrat", sans-serif;
   padding: 20px;
-  height: 100vh;
+  height: calc(var(--vh) * 100);
   position: relative;
   overflow-x: hidden;
 }
@@ -402,7 +402,7 @@
 @media (max-width: 768px) {
   .polls-container {
     width: 100vw;
-    height: 90vh;
+    height: calc(var(--vh) * 90);
     padding: 5px;
   }
   .polls-content{

@@ -4,7 +4,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Alumni+Sans+Pinstripe:ital@0;1&display=swap');
 .profile-container {
   display: flex;
-  height: 100vh;
+  height: calc(var(--vh) * 100);
   width: 85vw;
   overflow: hidden;
 }
@@ -366,7 +366,7 @@
   background-color: #1c1c1c;
   color: white;
   font-family: "Montserrat", sans-serif;
-  height: 100vh;
+  height: calc(var(--vh) * 100);
   overflow-y: auto;
   display: none; /* Hidden by default */
   width: 100%; /* Take full width in mobile */
@@ -465,7 +465,7 @@
   .profile-container {
     flex-direction: column;
     width: 100vw;
-    height: 90vh;
+    height: calc(var(--vh) * 90);
     position: relative;
   }
  
@@ -479,7 +479,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: calc(var(--vh) * 100);
     z-index: 10;
     overflow-y: auto;
   }

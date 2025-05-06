@@ -19,7 +19,7 @@
 .feed-container {
   display: flex;
   background-color: rgb(38, 38, 38);
-  height: 100vh;
+  height: calc(var(--vh) * 100);
   width: 85vw;
   gap: 20px;
   padding: 20px;
@@ -205,7 +205,7 @@
 .feed-container {
     display: flex;
     background-color: rgb(38, 38, 38);
-    height: 100vh;
+    height: calc(var(--vh) * 100);
     width: 85vw;
     gap: 20px;
     padding: 20px;
@@ -248,7 +248,7 @@
   .feed-container {
     flex-direction: column;
     width: 100vw;
-    height: 90vh;
+    height: calc(var(--vh) * 90);
     padding: 0%;
   }
   .feed-section {

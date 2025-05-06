@@ -1,7 +1,7 @@
 /* Container for entire messages page */
 .messages-container {
   display: flex;
-  height: 100vh;
+  height: calc(var(--vh) * 100);
   width: 85vw;
   background: linear-gradient(135deg, #0f0f0f, #1c1c1c); /* black background like Instagram */
   color: #fff;
@@ -285,7 +285,7 @@
 
 @media (max-width: 768px) {
   .messages-container {
-    height: 90vh;
+    height: calc(var(--vh) * 90);
     width: 100vw;
     display: flex;          /* ensure flex container */
     flex-direction: column; /* stack sidebar & panel */

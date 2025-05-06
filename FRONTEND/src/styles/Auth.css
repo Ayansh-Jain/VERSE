@@ -10,7 +10,7 @@
 .SignUp-Container {
   display: flex;
   justify-content: space-between;
-  height: 100vh;
+  height: calc(var(--vh) * 100);
   width: 100vw;
 }
 
@@ -173,7 +173,7 @@
   }
   .signup-section {
     width: 100%;
-    height: 100vh;                         /* fill viewport */
+    height: calc(var(--vh) * 100);                         /* fill viewport */
     display: flex;
     justify-content: center;
     align-items: center;
