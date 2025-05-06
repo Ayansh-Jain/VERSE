@@ -257,64 +257,116 @@ const Profile = () => {
   const isVideo = (url) => /\.(mp4|webm|ogg)$/i.test(url);
   return (
     <div className="profile-container">
-    {/* Left: Profile Info & Posts */}
-    <div className="profile-section">
-      <div className="profile-header">
-        <div className="profile-pic">
-          <img
-            src={profile.profilePic || "/assets/noprofile.jpg"}
-            alt="Profile"
-            className="profile-image"
-          />
-        </div>
-        <div className="profile-info">
-          <h2>{profile.username}</h2>
-          <div className="stats">
-            <p><strong>{profile.posts?.length || 0}</strong> Posts</p>
-            <p onClick={() => toggleMobileView("followers")}><strong>{profile.followers?.length || 0}</strong> Followers</p>
-            <p onClick={() => toggleMobileView("following")}><strong>{profile.following?.length || 0}</strong> Following</p>
+      {/* Own Profile Section (Left) */}
+      <div
+        className={`profile-section ${
+          mobileView === "followers" || mobileView === "following" ? "mobile-hidden" : ""
+        }`}
+      >
+        <div className="profile-header">
+          <div className="profile-pic">
+            <img
+              src={profile.profilePic || "/assets/noprofile.jpg"}
+              alt="Profile"
+              className="profile-image"
+            />
           </div>
-        </div>
-        <div className="profile-actions">
-          <button onClick={() => setShowCreatePostModal(true)}>+</button>
-          <button onClick={() => setShowEditModal(true)}>Edit Profile</button>
-          <button onClick={() => setShowShareModal(true)}>Share</button>
-        </div>
-      </div>
-
-      <div className="bio-section">
-        {profile.skills.map((s) => <span key={s} className="skill-tag">{s}</span>)}
-        <p>{profile.organization || "Not specified."}</p>
-        <p>{profile.bio || "No bio added."}</p>
-      </div>
-
-      <div className="posts-section">
-        <h3>Your Posts</h3>
-        {profile.posts?.length > 0 ? (
-          <div className="posts-grid">
-            {profile.posts.map((post, i) => (
-              <div key={`${post._id}-${i}`} className="post-minimized">
-                {post.img ? (
-                  isVideo(post.img) ? (
-                    <video src={post.img} controls className="post-thumbnail" />
-                  ) : (
-                    <img src={post.img} alt="Post thumbnail" className="post-thumbnail" />
-                  )
-                ) : (
-                  <div className="post-no-image">
-                    {post.text?.slice(0, 20) || "No content"}
-                  </div>
-                )}
+          <div className="profile-info">
+            <div className="profile-info-1">
+              <h2 className="username">{profile.username}</h2>
+              <div className="stats">
+                <p>
+                  <strong>{profile.posts?.length || 0}</strong> Posts
+                </p>
+                <p
+                  className="stat-clickable"
+                  onClick={() => toggleMobileView("followers")}
+                >
+                  <strong>{profile.followers?.length || 0}</strong> Followers
+                </p>
+                <p
+                  className="stat-clickable"
+                  onClick={() => toggleMobileView("following")}
+                >
+                  <strong>{profile.following?.length || 0}</strong> Following
+                </p>
               </div>
-            ))}
+            </div>
           </div>
-        ) : (
-          <p>No posts yet.</p>
-        )}
+          <div className="profile-info-2">
+            <div className="profile-top">
+              <div className="verse-points">
+                <img
+                  src="/assets/coin_1369860.png"
+                  alt="Coin"
+                  className="coin-icon"
+                />
+                <span>{profile.versePoints || 50}</span>
+              </div>
+              <button
+                className="create-post-button"
+                onClick={() => setShowCreatePostModal(true)}
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="bio-section">
+          {profile.skills && profile.skills.length > 0 && (
+            <div className="skills-tags">
+              {profile.skills.map((skill, index) => (
+                <span key={index} className="skill-tag">
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
+          <p>{profile.organization || "Not specified."}</p>
+          <p>{profile.bio || "No bio added."}</p>
+        </div>
+
+        <div className="profile-actions">
+          <button
+            className="edit-button"
+            onClick={() => setShowEditModal(true)}
+          >
+            Edit Profile
+          </button>
+          <button
+            className="edit-button"
+            onClick={() => setShowShareModal(true)}
+          >
+            Share Profile
+          </button>
+        </div>
+
+        <div className="posts-section">
+          <h3>Your Posts</h3>
+          {profile.posts?.length > 0 ? (
+            <div className="posts-grid">
+              {profile.posts.map((post, i) => (
+                <div key={`${post._id}-${i}`} className="post-minimized">
+                  {post.img ? (
+                    isVideo(post.img) ? (
+                      <video src={post.img} controls className="post-thumbnail" />
+                    ) : (
+                      <img src={post.img} alt="Post thumbnail" className="post-thumbnail" />
+                    )
+                  ) : (
+                    <div className="post-no-image">
+                      {post.text?.slice(0, 20) || "No content"}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No posts yet.</p>
+          )}
+        </div>
       </div>
-    </div>
-
-
       {/* Followers Panel (Right) */}
       <div
         className={`followers-panel ${
