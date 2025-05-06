@@ -143,7 +143,30 @@ const Feed = () => {
       console.error("Error fetching follower profile:", err);
     }
   };
-
+  useEffect(() => {
+    const vids = document.querySelectorAll(".post-video");
+    if (!vids.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target;
+          if (entry.isIntersecting) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+    vids.forEach((v) => {
+      v.muted = true;
+      io.observe(v);
+    });
+    return () => {
+      vids.forEach((v) => io.unobserve(v));
+    };
+  }, [posts]);
   return (
     <div className="feed-container">
       <section className="feed-section">
@@ -177,7 +200,8 @@ const Feed = () => {
             <div className="post-media">
               {post.img && (
                 isVideo(post.img) ? (
-                  <video src={post.img} controls className="post-video" />
+                  <video src={post.img}  className="post-video"  playsInline
+                  loop/>
                 ) : (
                   <img
                     src={post.img}
@@ -354,7 +378,7 @@ const Feed = () => {
           </div>
         </Modal>
       )}
-
+  
       {/* Follower Share Modal */}
       {showFollowerShareModal && selectedFollowerProfile && (
         <Modal onClose={() => setShowFollowerShareModal(false)}>

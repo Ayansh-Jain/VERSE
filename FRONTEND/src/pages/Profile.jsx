@@ -28,7 +28,7 @@ const Profile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-
+  const [postModalData, setPostModalData] = useState(null);
   // Modal state for viewing a follower's profile
   const [selectedFollowerProfile, setSelectedFollowerProfile] = useState(null);
   const [showFollowerModal, setShowFollowerModal] = useState(false);
@@ -255,6 +255,8 @@ const Profile = () => {
     }
   };
   const isVideo = (url) => /\.(mp4|webm|ogg)$/i.test(url);
+  const openPostModal = (post) => setPostModalData(post);
+  const closePostModal = () => setPostModalData(null);
   return (
     <div className="profile-container">
       {/* Own Profile Section (Left) */}
@@ -347,7 +349,7 @@ const Profile = () => {
           {profile.posts?.length > 0 ? (
             <div className="posts-grid">
               {profile.posts.map((post, i) => (
-                <div key={`${post._id}-${i}`} className="post-minimized">
+                <div key={`${post._id}-${i}`} className="post-minimized" onClick={() => openPostModal(post)}>
                   {post.img ? (
                     isVideo(post.img) ? (
                       <video src={post.img} controls className="post-thumbnail" />
@@ -504,6 +506,28 @@ const Profile = () => {
       {/* Modals */}
 
       {/* Edit Profile Modal */}
+         {/* Post View Modal */}
+         {postModalData && (
+        <Modal onClose={closePostModal}>
+          <div className="post-view-modal">
+            {postModalData.img && isVideo(postModalData.img) ? (
+              <video
+                src={postModalData.img}
+                controls
+                autoPlay
+                className="post-view-video"
+              />
+            ) : postModalData.img ? (
+              <img
+                src={postModalData.img}
+                alt="Post"
+                className="post-view-image"
+              />
+            ) : null}
+            {postModalData.text && <p className="post-view-text">{postModalData.text}</p>}
+          </div>
+        </Modal>
+      )}
       {showEditModal && (
   <Modal onClose={() => setShowEditModal(false)}>
     <h2>Edit Profile</h2>
