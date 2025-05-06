@@ -241,7 +241,29 @@
   }
   
   /* Keep existing other styles */
-
+  .video-container {
+    position: relative;
+  }
+  .sound-toggle {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(0,0,0,0.5);
+    border: none;
+    color: white;
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .like-button.animate {
+    animation: pop 0.6s ease-out;
+  }
+  @keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.4); }
+    100% { transform: scale(1); }
+  }
+  
 
 /* Add responsive styles for mobile devices */
 @media (max-width: 768px) {
