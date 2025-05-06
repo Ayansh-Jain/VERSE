@@ -26,7 +26,9 @@ const Feed = () => {
   const [showFollowerModal, setShowFollowerModal] = useState(false);
   const [selectedFollowerProfile, setSelectedFollowerProfile] = useState(null);
   const [showFollowerShareModal, setShowFollowerShareModal] = useState(false);
-
+  const videoRefs = useRef({});
+  const [justLiked, setJustLiked] = useState(new Set());
+ 
   // Shuffle utility
   const shuffle = (array) => {
     for (let i = array.length - 1; i > 0; i--) {
@@ -101,15 +103,28 @@ const Feed = () => {
     try {
       const updated = await api.toggleLike(postId);
       setPosts((prev) =>
-        prev.map((p) =>
-          p._id === postId ? { ...p, likes: updated.likes } : p
-        )
+        prev.map((p) => (p._id === postId ? { ...p, likes: updated.likes } : p))
       );
+      // trigger animation if liked
+      const isNowLiked = updated.likes.includes(user._id);
+      if (isNowLiked) {
+        setJustLiked((prev) => {
+          const next = new Set(prev);
+          next.add(postId);
+          return next;
+        });
+        setTimeout(() => {
+          setJustLiked((prev) => {
+            const next = new Set(prev);
+            next.delete(postId);
+            return next;
+          });
+        }, 600); // match CSS animation duration
+      }
     } catch (err) {
       console.error("Error liking post:", err);
     }
   };
-
   // Follow handler
   const handleFollow = async (uid) => {
     try {
@@ -143,8 +158,9 @@ const Feed = () => {
       console.error("Error fetching follower profile:", err);
     }
   };
+  // Autoplay / pause videos based on visibility
   useEffect(() => {
-    const vids = document.querySelectorAll(".post-video");
+    const vids = Object.values(videoRefs.current).filter((v) => v);
     if (!vids.length) return;
     const io = new IntersectionObserver(
       (entries) => {
@@ -157,16 +173,31 @@ const Feed = () => {
           }
         });
       },
-      { threshold: 0.5 }
+      { threshold: 0.6 }
     );
     vids.forEach((v) => {
       v.muted = true;
+      v.playsInline = true;
+      v.loop = true;
       io.observe(v);
     });
-    return () => {
-      vids.forEach((v) => io.unobserve(v));
-    };
+    return () => vids.forEach((v) => io.unobserve(v));
   }, [posts]);
+
+  // Toggle play/pause on video click
+  const togglePlay = (id) => {
+    const video = videoRefs.current[id];
+    if (!video) return;
+    video.paused ? video.play() : video.pause();
+  };
+
+  // Toggle sound on/off
+  const toggleSound = (id) => {
+    const video = videoRefs.current[id];
+    if (!video) return;
+    video.muted = !video.muted;
+  };
+
   return (
     <div className="feed-container">
       <section className="feed-section">
@@ -197,30 +228,44 @@ const Feed = () => {
                   </button>
                 )}
             </div>
+            
             <div className="post-media">
-              {post.img && (
-                isVideo(post.img) ? (
-                  <video src={post.img}  className="post-video"  playsInline
-                  loop/>
+              {post.img &&
+                (isVideo(post.img) ? (
+                  <div className="video-container">
+                    <video
+                      ref={(el) => (videoRefs.current[post._id] = el)}
+                      src={post.img}
+                      className="post-video"
+                      onClick={() => togglePlay(post._id)}
+                    />
+                    <button
+                      className="sound-toggle"
+                      onClick={() => toggleSound(post._id)}
+                    >
+                      {videoRefs.current[post._id]?.muted ? "🔇" : "🔊"}
+                    </button>
+                  </div>
                 ) : (
                   <img
                     src={post.img}
                     alt="post"
                     className="post-image"
                   />
-                )
-              )}
+                ))}
             </div>
+
             <div className="post-actions">
               <button
                 className={`like-button ${
                   post.likes.includes(user._id) ? "liked" : ""
-                }`}
+                } ${justLiked.has(post._id) ? "animate" : ""}`}
                 onClick={() => handleLike(post._id)}
               >
                 ❤️ {post.likes.length}
               </button>
             </div>
+
             <div className="post-caption">{post.text}</div>
           </div>
         ))}
