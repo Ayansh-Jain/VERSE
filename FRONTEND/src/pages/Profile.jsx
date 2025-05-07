@@ -110,24 +110,7 @@ const Profile = () => {
   }, [fetchProfile]);
 
   // 3) Refresh when scrolled to top (debounced)
-  useEffect(() => {
-    let timeout;
-    const handleScroll = () => {
-      if (window.scrollY === 0) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          fetchProfile();
-          console.log("Profile refreshed on scroll to top.");
-        }, 200); // 200ms debounce
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      clearTimeout(timeout);
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, [fetchProfile]);
-
+ 
   const filteredFollowers = useMemo(() => {
     return (profile?.followers || []).filter((follower) =>
       (follower.username || "")

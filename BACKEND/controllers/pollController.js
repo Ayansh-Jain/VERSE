@@ -1,9 +1,11 @@
+// controllers/pollController.js
+
 import mongoose from "mongoose";
 import Poll from "../Models/pollModel.js";
 import User from "../Models/userModel.js";
 
 /**
- * Create a new challenge.
+ * Create a new poll challenge or match an existing one.
  */
 export const createPoll = async (req, res) => {
   try {
@@ -11,117 +13,139 @@ export const createPoll = async (req, res) => {
     if (!category) {
       return res.status(400).json({ message: "Category is required." });
     }
-    const normalizedCategory = category.trim().toLowerCase();
+    category = category.trim().toLowerCase();
 
-    const user = await User.findById(req.user._id);
+    // Load only versePoints field
+    const user = await User.findById(req.user._id).select("versePoints").lean();
     if (!user) return res.status(404).json({ message: "User not found." });
     if (user.versePoints < 10) {
-      return res.status(400).json({ message: "Not enough versePoints to challenge." });
+      return res.status(400).json({ message: "Not enough versePoints." });
     }
 
-    // Daily limit check
+    // Check daily limit
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    const challengeCount = await Poll.countDocuments({
-      challenger: user._id,
+    const countToday = await Poll.countDocuments({
+      challenger: req.user._id,
       createdAt: { $gte: startOfDay },
     });
-    const maxChallenges = 3;
-    if (challengeCount >= maxChallenges) {
-      return res.status(400).json({ message: "Maximum 3 challenges per day reached." });
+    if (countToday >= 3) {
+      return res.status(400).json({ message: "3 polls per day max." });
     }
-    const attemptsLeft = maxChallenges - challengeCount - 1;
+    const attemptsLeft = 3 - countToday - 1;
 
-    // Look for a pending match in last 24h
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const existingChallenge = await Poll.findOne({
-      category: normalizedCategory,
+    // Try to match a pending poll from last 24h
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const pending = await Poll.findOne({
+      category,
       status: "pending",
-      challenger: { $ne: user._id },
-      createdAt: { $gte: twentyFourHoursAgo },
-    });
+      challenger: { $ne: req.user._id },
+      createdAt: { $gte: since },
+    })
+      .select("challenger")
+      .lean();
 
-    // Use Cloudinary URL if file was uploaded
-    const currentUserSubmission = req.file ? req.file.path : "";
+    const submission = req.file ? req.file.path : "";
 
-    if (existingChallenge) {
-      const challengedUser = await User.findById(existingChallenge.challenger);
-      if (!challengedUser) {
-        await Poll.findByIdAndDelete(existingChallenge._id);
-        return res.status(404).json({ message: "Original challenger not found." });
-      }
+    if (pending) {
+      // Matched: deduct points from both
+      await User.updateOne({ _id: req.user._id }, { $inc: { versePoints: -10 } });
+      await User.updateOne({ _id: pending.challenger }, { $inc: { versePoints: -10 } });
 
-      // Deduct points
-      user.versePoints -= 10;
-      challengedUser.versePoints -= 10;
-      await user.save();
-      await challengedUser.save();
-
-      existingChallenge.challenged = user._id;
-      existingChallenge.opponentImage = currentUserSubmission;
-      existingChallenge.status = currentUserSubmission ? "closed" : "open";
-      await existingChallenge.save();
+      // Update existing poll
+      const updated = await Poll.findByIdAndUpdate(
+        pending._id,
+        {
+          challenged: req.user._id,
+          opponentImage: submission,
+          status: submission ? "closed" : "open",
+        },
+        { new: true }
+      )
+        .populate("challenger challenged", "username profilePic versePoints")
+        .lean();
 
       return res.status(200).json({
-        message: "Challenge matched! You can now vote.",
-        challenge: existingChallenge,
-        attemptsLeft,
-      });
-    } else {
-      // Create new pending
-      user.versePoints -= 10;
-      await user.save();
-
-      const newChallenge = new Poll({
-        category: normalizedCategory,
-        challenger: user._id,
-        challenged: null,
-        challengerSubmission: currentUserSubmission,
-        opponentImage: "",
-        status: "pending",
-      });
-      await newChallenge.save();
-
-      return res.status(201).json({
-        message: "Challenge created. You will be notified when matched.",
-        challenge: newChallenge,
+        message: "Matched! You can vote now.",
+        challenge: updated,
         attemptsLeft,
       });
     }
-  } catch (error) {
-    console.error("createPoll error:", error);
-    res.status(500).json({ message: error.message });
+
+    // No match: create new pending poll
+    await User.updateOne({ _id: req.user._id }, { $inc: { versePoints: -10 } });
+
+    const newPoll = await Poll.create({
+      category,
+      challenger: req.user._id,
+      challengerSubmission: submission,
+      status: "pending",
+    });
+
+    res.status(201).json({
+      message: "Poll created. Waiting for match.",
+      challenge: newPoll,
+      attemptsLeft,
+    });
+  } catch (err) {
+    console.error("createPoll error:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
- * Update challenged user's submission.
+ * Update the challenged user's submission on a matched poll.
  */
 export const updatePollSubmission = async (req, res) => {
   try {
     const { pollId } = req.params;
-    const poll = await Poll.findById(pollId);
-    if (!poll) return res.status(404).json({ message: "Challenge not found." });
-
-    if (poll.challenged.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized to submit to this challenge." });
+    const submission = req.file?.path;
+    if (!submission) {
+      return res.status(400).json({ message: "No file uploaded." });
     }
 
-    if (req.file) {
-      poll.opponentImage = req.file.path;
-      poll.status = "closed";
-    }
-    await poll.save();
+    // Atomically find the poll where this user is the challenged party and it's still open/pending,
+    // then set the opponentImage and close it.
+    const updated = await Poll.findOneAndUpdate(
+      {
+        _id:       pollId,
+        challenged: req.user._id,
+        status:    { $in: ["pending", "open"] }
+      },
+      {
+        $set: {
+          opponentImage: submission,
+          status:        "closed"
+        }
+      },
+      {
+        new:    true,   // return the updated doc
+        lean:   true,   // return a plain JS object
+        select: "challenger challenged challengerSubmission opponentImage status votes createdAt updatedAt"
+      }
+    )
+      .populate("challenger challenged", "username profilePic");
 
-    res.status(200).json({ message: "Submission updated.", challenge: poll });
-  } catch (error) {
-    console.error("updatePollSubmission error:", error);
-    res.status(500).json({ message: error.message });
+    // If no document was found, either it doesn't exist or user isn't authorized
+    if (!updated) {
+      // Check existence
+      const exists = await Poll.exists({ _id: pollId });
+      return res
+        .status(exists ? 403 : 404)
+        .json({ message: exists ? "Not authorized to submit." : "Poll not found." });
+    }
+
+    return res.status(200).json({
+      message:   "Submission updated.",
+      challenge: updated
+    });
+  } catch (err) {
+    console.error("updatePollSubmission error:", err);
+    return res.status(500).json({ message: err.message });
   }
 };
-
 /**
- * Vote on a challenge.
+ * Vote on a poll (one vote per user, no self-vote).
  */
 export const votePoll = async (req, res) => {
   try {
@@ -131,174 +155,172 @@ export const votePoll = async (req, res) => {
       return res.status(400).json({ message: "Invalid vote option." });
     }
 
-    const poll = await Poll.findById(pollId);
-    if (!poll) return res.status(404).json({ message: "Challenge not found." });
-
-    // Prevent self-vote
-    if (
-      poll.challenger.toString() === req.user._id.toString() ||
-      (poll.challenged && poll.challenged.toString() === req.user._id.toString())
-    ) {
-      return res.status(400).json({ message: "You cannot vote on your own challenge." });
-    }
-
-    // One vote per user
-    if (poll.votes.some((v) => v.voter.toString() === req.user._id.toString())) {
-      return res.status(400).json({ message: "You have already voted on this challenge." });
-    }
-    poll.votes.push({ voter: req.user._id, option });
-    await poll.save();
-
-    // Award voting points (max 10/day)
-    const user = await User.findById(req.user._id);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (!user.lastVoteDate || new Date(user.lastVoteDate) < today) {
-      user.votePointsEarnedToday = 0;
-      user.lastVoteDate = new Date();
-    }
-    let message = "Vote counted!";
-    if (user.votePointsEarnedToday < 10) {
-      user.versePoints += 1;
-      user.votePointsEarnedToday += 1;
-      await user.save();
-      message += " You earned 1 versePoint.";
-    } else {
-      message += " (Daily limit reached.)";
-    }
-
-    res.status(200).json({
-      message,
-      votes: poll.votes,
-      hasVoted: true,
-    });
-  } catch (error) {
-    console.error("votePoll error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-/**
- * Finalize challenge.
- */
-export const finalizePoll = async (req, res) => {
-  try {
-    const { pollId } = req.params;
+    // Load poll metadata
     const poll = await Poll.findById(pollId)
-      .populate("challenger challenged", "username versePoints");
-    if (!poll) return res.status(404).json({ message: "Challenge not found." });
-    if (poll.finalized) {
-      return res.status(400).json({ message: "Challenge already finalized." });
-    }
-    if (poll.status !== "closed") {
-      return res.status(400).json({ message: "Challenge is still open." });
-    }
-
-    const challengerVotes = poll.votes.filter((v) => v.option === "challenger").length;
-    const challengedVotes = poll.votes.filter((v) => v.option === "challenged").length;
-    let winnerUser = null;
-    if (challengerVotes > challengedVotes) winnerUser = poll.challenger;
-    else if (challengedVotes > challengerVotes) winnerUser = poll.challenged;
-
-    if (winnerUser) {
-      const wu = await User.findById(winnerUser._id);
-      wu.versePoints += 10;
-      await wu.save();
-    }
-
-    poll.finalized = true;
-    await poll.save();
-
-    res.status(200).json({ message: "Challenge finalized.", challenge: poll });
-  } catch (error) {
-    console.error("finalizePoll error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-/**
- * Cancel a pending challenge.
- */
-export const cancelPoll = async (req, res) => {
-  try {
-    const poll = await Poll.findOne({
-      challenger: req.user._id,
-      status: "pending",
-    });
+      .select("challenger challenged votes")
+      .lean();
     if (!poll) {
-      return res.status(404).json({ message: "No pending challenge to cancel." });
+      return res.status(404).json({ message: "Poll not found." });
     }
 
-    const user = await User.findById(req.user._id);
-    user.versePoints += 10;
-    await user.save();
+    const me = String(req.user._id);
+    // Prevent self-vote
+    if ([poll.challenger, poll.challenged].map(String).includes(me)) {
+      return res.status(400).json({ message: "Cannot vote your own poll." });
+    }
+    // Prevent double-vote
+    if (poll.votes.some((v) => String(v.voter) === me)) {
+      return res.status(400).json({ message: "Already voted." });
+    }
 
-    await Poll.findByIdAndDelete(poll._id);
-    res.status(200).json({
-      message: "Challenge cancelled successfully. 10 versePoints refunded.",
-    });
-  } catch (error) {
-    console.error("cancelPoll error:", error);
-    res.status(500).json({ message: error.message });
+    // Append vote
+    const updated = await Poll.findByIdAndUpdate(
+      pollId,
+      { $push: { votes: { voter: req.user._id, option } } },
+      { new: true, select: "votes" }
+    )
+      .lean();
+
+    res.status(200).json({ message: "Vote counted.", votes: updated.votes });
+  } catch (err) {
+    console.error("votePoll error:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
-/**
- * Get all polls.
- */
+// Get active, pending, and past polls separately
 export const getPolls = async (req, res) => {
   try {
-    const userId = req.user._id.toString();
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const me = req.user._id;
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const allPolls = await Poll.find()
-      .populate("challenger", "username profilePic versePoints")
-      .populate("challenged", "username profilePic versePoints")
-      .sort({ createdAt: -1 });
+    // Run queries in parallel
+    const [active, pending, past] = await Promise.all([
+      Poll.find({
+        status: { $in: ["open", "closed"] },
+        createdAt: { $gte: since }
+      })
+        .populate("challenger challenged", "username profilePic versePoints")
+        .sort({ createdAt: -1 })
+        .lean(),
 
-    const active = allPolls.filter(
-      (p) =>
-        (p.status === "open" || p.status === "closed") &&
-        new Date(p.createdAt) >= twentyFourHoursAgo
-    );
-    const pending = allPolls.filter((p) => p.status === "pending");
-    const past = allPolls.filter(
-      (p) =>
-        (p.challenger && p.challenger._id.toString() === userId) ||
-        (p.challenged && p.challenged._id.toString() === userId)
-    );
+      Poll.find({ status: "pending" })
+        .populate("challenger", "username profilePic versePoints")
+        .sort({ createdAt: -1 })
+        .lean(),
 
-    active.forEach((p) => {
-      p._doc.hasVoted = p.votes.some((v) => v.voter.toString() === userId);
+      Poll.find({
+        $or: [{ challenger: me }, { challenged: me }]
+      })
+        .populate("challenger challenged", "username profilePic versePoints")
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
+
+    // Annotate hasVoted
+    const annotate = (arr) =>
+      arr.map((p) => ({
+        ...p,
+        hasVoted: p.votes.some((v) => String(v.voter) === String(me)),
+      }));
+
+    res.status(200).json({
+      active: annotate(active),
+      pending: pending,
+      past: annotate(past),
     });
-    past.forEach((p) => {
-      p._doc.hasVoted = p.votes.some((v) => v.voter.toString() === userId);
-    });
-
-    res.status(200).json({ active, pending, past });
-  } catch (error) {
-    console.error("getPolls error:", error);
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    console.error("getPolls error:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
-/**
- * Get a single poll by ID.
- */
-export const getPollById = async (req, res) => {
+// Finalize a poll and award points
+export const finalizePoll = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
-    const poll = await Poll.findById(req.params.pollId)
-      .populate("challenger", "username profilePic versePoints")
-      .populate("challenged", "username profilePic versePoints");
-    if (!poll) return res.status(404).json({ message: "Challenge not found." });
+    const { pollId } = req.params;
 
-    poll._doc.hasVoted = poll.votes.some(
-      (v) => v.voter.toString() === req.user._id.toString()
-    );
+    await session.withTransaction(async () => {
+      // Fetch poll
+      const poll = await Poll.findById(pollId)
+        .select("status finalized votes challenger challenged")
+        .lean()
+        .session(session);
+      if (!poll) {
+        return res.status(404).json({ message: "Poll not found." });
+      }
+      if (poll.finalized) {
+        return res.status(400).json({ message: "Already finalized." });
+      }
+      if (poll.status !== "closed") {
+        return res.status(400).json({ message: "Still open." });
+      }
 
-    res.status(200).json(poll);
-  } catch (error) {
-    console.error("getPollById error:", error);
-    res.status(500).json({ message: error.message });
+      // Determine winner
+      const count = (opt) => poll.votes.filter((v) => v.option === opt).length;
+      let winnerId = null;
+      if (count("challenger") > count("challenged")) winnerId = poll.challenger;
+      else if (count("challenged") > count("challenger")) winnerId = poll.challenged;
+
+      // Award points if winner exists
+      if (winnerId) {
+        await User.updateOne(
+          { _id: winnerId },
+          { $inc: { versePoints: 10 } },
+          { session }
+        );
+      }
+
+      // Mark finalized
+      await Poll.updateOne(
+        { _id: pollId },
+        { $set: { finalized: true } },
+        { session }
+      );
+    });
+
+    session.endSession();
+
+    // Return updated poll
+    const updatedPoll = await Poll.findById(pollId)
+      .populate("challenger challenged", "username versePoints")
+      .lean();
+
+    res.status(200).json({ message: "Poll finalized.", challenge: updatedPoll });
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("finalizePoll error:", err);
+    res.status(500).json({ message: err.message });
   }
 };
+
+// Cancel a pending poll and refund the user
+export const cancelPoll = async (req, res) => {
+  try {
+    const me = req.user._id;
+    const poll = await Poll.findOne({ challenger: me, status: "pending" }).lean();
+    if (!poll) {
+      return res.status(404).json({ message: "No pending poll to cancel." });
+    }
+
+    // Delete and refund
+    await Promise.all([
+      Poll.deleteOne({ _id: poll._id }),
+      User.updateOne({ _id: me }, { $inc: { versePoints: 10 } }),
+    ]);
+
+    res.status(200).json({ message: "Poll cancelled and refunded." });
+  } catch (err) {
+    console.error("cancelPoll error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
+
+
+

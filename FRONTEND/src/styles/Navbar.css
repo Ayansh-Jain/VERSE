@@ -56,7 +56,7 @@
     cursor: pointer;
  }
  .navButtons:active{
-    scale:98%;
+    scale:108%;
 }
 
 @media (max-width: 768px) {
