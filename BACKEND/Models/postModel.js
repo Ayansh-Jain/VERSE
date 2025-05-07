@@ -1,7 +1,7 @@
 // Models/postModel.js
 import mongoose from "mongoose";
 
-const postSchema = mongoose.Schema(
+const postSchema = new mongoose.Schema(
   {
     postedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -32,12 +32,17 @@ const postSchema = mongoose.Schema(
           required: true,
         },
         userProfilePic: String,
-        username: String
-      }
-    ]
+        username: String,
+      },
+    ],
   },
   { timestamps: true }
 );
 
-const Post = mongoose.model("Post", postSchema);
+// Add index for efficient "feed" queries (by poster and recency)
+postSchema.index({ postedBy: 1, createdAt: -1 });
+
+// Use existing model if already registered (prevents overwrite errors in hot reload)
+const Post = mongoose.models.Post || mongoose.model("Post", postSchema);
+
 export default Post;

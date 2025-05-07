@@ -6,8 +6,7 @@ import helmet from "helmet";
 import http from "http";
 import jwt from "jsonwebtoken";
 import { Server as SocketIO } from "socket.io";
-import path from "path";
-import { fileURLToPath } from "url";
+
 import connectDB from "./db/connectDB.js";
 import userRoutes from "./routes/userRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
@@ -15,6 +14,7 @@ import messageRoutes from "./routes/messageRoutes.js";
 import pollRoutes from "./routes/pollRoutes.js";
 import authRoutes from "./routes/authRoutes.js"; // NEW
 import passport from "passport"; 
+import compression from "compression";
 
 dotenv.config();
 connectDB();
@@ -39,7 +39,7 @@ app.use(
     credentials: true,
   })
 );
-
+app.use(compression());
 // ─── SECURITY & PARSERS ────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(express.json({ limit: "50mb" }));
@@ -47,7 +47,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // ─── STATIC UPLOADS ────────────────────────────────────────────────────────────
 
-
+app.use((req, res, next) => {
+     res.set("Cache-Control", "public, max-age=10");
+     next();
+  });
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
 app.use("/auth", authRoutes);  
 app.use("/api/users", userRoutes);

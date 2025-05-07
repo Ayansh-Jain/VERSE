@@ -1,12 +1,20 @@
+// controllers/postController.js
+
 import Post from "../Models/postModel.js";
 import User from "../Models/userModel.js";
+import { transformUrl } from "../middlewares/Cloudinary.js";  // ensure this path is correct
 
-// Create post — image/video upload field “img” via Cloudinary
+/**
+ * Create a new post (image or video).
+ * Uploaded via Cloudinary; we store the raw URL in MongoDB,
+ * then transform it before returning to the client.
+ */
 export const createPost = async (req, res) => {
   try {
     const { text } = req.body;
     const imgUrl = req.file ? req.file.path : null;
 
+    // Save raw URL
     const newPost = new Post({
       postedBy: req.user._id,
       text,
@@ -14,71 +22,121 @@ export const createPost = async (req, res) => {
     });
     await newPost.save();
 
-    // Add post ID to user
+    // Add post ID to user's posts array
     await User.findByIdAndUpdate(req.user._id, {
       $push: { posts: newPost._id },
     });
 
-    res.status(201).json(newPost);
+    // Prepare return object
+    const returned = newPost.toObject();
+    if (returned.img) {
+      returned.img = transformUrl(returned.img);
+    }
+
+    res.status(201).json(returned);
   } catch (error) {
     console.error("createPost error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// Fetch feed: posts by following first, then others
+/**
+ * Fetch paginated feed:
+ *  - First posts by users you follow,
+ *  - Then fill the remainder with posts by others.
+ * Uses skip/limit + .lean() for performance.
+ * Transforms each img URL before returning.
+ */
 export const getFeed = async (req, res) => {
   try {
-    const page  = parseInt(req.query.page)  || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page  = Math.max(1, parseInt(req.query.page, 10)  || 1);
+    const limit = Math.min(50, parseInt(req.query.limit, 10) || 10);
     const skip  = (page - 1) * limit;
 
-    const feedUsers = req.user.following.map((id) => id.toString());
-    feedUsers.push(req.user._id.toString());
+    // Build list of followed user IDs (strings)
+    const feedUsers = req.user.following.map(String);
+    feedUsers.push(String(req.user._id));
 
+    // Count how many posts by followed users exist
+    const totalFollowingPosts = await Post.countDocuments({
+      postedBy: { $in: feedUsers }
+    });
+
+    // Query posts by followed users
     const followingPosts = await Post.find({
-      postedBy: { $in: feedUsers },
+      postedBy: { $in: feedUsers }
     })
+      .select("text img likes postedBy createdAt")
       .populate("postedBy", "username profilePic")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
-    const nonFollowingPosts = await Post.find({
-      postedBy: { $nin: feedUsers },
-    })
-      .populate("postedBy", "username profilePic")
-      .sort({ createdAt: -1 });
+    let posts = followingPosts;
 
-    const allPosts = [...followingPosts, ...nonFollowingPosts];
-    const paginated = allPosts.slice(skip, skip + limit);
+    // If not enough, fetch posts from non-followed users
+    if (followingPosts.length < limit) {
+      const nonFollowSkip = Math.max(0, skip - totalFollowingPosts);
+      const nonFollowLimit = limit - followingPosts.length;
 
-    res.status(200).json(paginated);
+      const nonFollowingPosts = await Post.find({
+        postedBy: { $nin: feedUsers }
+      })
+        .select("text img likes postedBy createdAt")
+        .populate("postedBy", "username profilePic")
+        .sort({ createdAt: -1 })
+        .skip(nonFollowSkip)
+        .limit(nonFollowLimit)
+        .lean();
+
+      posts = posts.concat(nonFollowingPosts);
+    }
+
+    // Transform each img URL
+    const transformed = posts.map((p) => {
+      if (p.img) {
+        return { ...p, img: transformUrl(p.img) };
+      }
+      return p;
+    });
+
+    return res.status(200).json(transformed);
   } catch (error) {
     console.error("getFeed error:", error);
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
-// Like / Unlike a post
+/**
+ * Toggle like/unlike on a post.
+ */
 export const likePost = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const postId = req.params.id;
+    const userId = req.user._id;
+
+    // Fetch post (lean for speed)
+    const post = await Post.findById(postId).lean();
     if (!post) {
       return res.status(404).json({ message: "Post not found." });
     }
 
-    const userId = req.user._id;
-    const isLiked = post.likes.some((id) => id.toString() === userId.toString());
-    const update  = isLiked
+    const hasLiked = post.likes.some((id) => id.toString() === userId.toString());
+    const update = hasLiked
       ? { $pull:   { likes: userId } }
-      : { $addToSet: { likes: userId } };
+      : { $addToSet:{ likes: userId } };
 
-    const updatedPost = await Post.findByIdAndUpdate(req.params.id, update, {
-      new: true,
+    const updated = await Post.findByIdAndUpdate(postId, update, { new: true })
+      .select("likes")
+      .lean();
+
+    return res.status(200).json({
+      message: hasLiked ? "Post unliked." : "Post liked.",
+      likes: updated.likes
     });
-
-    res.status(200).json({ message: "Post updated.", likes: updatedPost.likes });
   } catch (error) {
     console.error("likePost error:", error);
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
