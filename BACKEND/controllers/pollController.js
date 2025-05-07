@@ -319,6 +319,28 @@ export const cancelPoll = async (req, res) => {
 };
 
 
+/**
+ * Get a single poll by ID.
+ */
+export const getPollById = async (req, res) => {
+  try {
+    const poll = await Poll.findById(req.params.pollId)
+      .populate("challenger", "username profilePic versePoints")
+      .populate("challenged", "username profilePic versePoints");
+    if (!poll) return res.status(404).json({ message: "Challenge not found." });
+
+    poll._doc.hasVoted = poll.votes.some(
+      (v) => v.voter.toString() === req.user._id.toString()
+    );
+
+    res.status(200).json(poll);
+  } catch (error) {
+    console.error("getPollById error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 
 
 
