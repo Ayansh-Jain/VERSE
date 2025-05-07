@@ -6,36 +6,49 @@ import User from "../Models/userModel.js";
  */
 export const sendMessage = async (req, res) => {
   try {
+    // 1) Extract data
+    const senderId = req.user._id;
     const { receiver, text } = req.body;
     const fileUrl = req.file ? req.file.path : null;
 
-    const newMessage = new Message({
-      sender:   req.user._id,
+    // 2) Create message in one call
+    const saved = await Message.create({
+      sender: senderId,
       receiver,
       text,
-      file:     fileUrl,
-      read:     false,
+      file: fileUrl,
+      read: false,
     });
-    await newMessage.save();
 
-    // lean & select only sender info + basic metadata
-    const populated = await Message.findById(newMessage._id)
-      .select("sender receiver text file createdAt")
-      .populate("sender", "username profilePic")
-      .lean();
+    // 3) Build the payload with sender info (no DB lookup)
+    const payload = {
+      _id:       saved._id,
+      sender: {
+        _id:        senderId,
+        username:   req.user.username,
+        profilePic: req.user.profilePic,
+      },
+      receiver,
+      text,
+      file:      fileUrl,
+      read:      false,
+      createdAt: saved.createdAt,
+      updatedAt: saved.updatedAt,
+    };
 
-    // emit via socket
+    // 4) Send HTTP response immediately
+    res.status(201).json(payload);
+
+    // 5) Emit over Socket.IO (fire-and-forget)
     const io = req.app.get("socketio");
-    io.to(receiver).emit("receiveMessage", populated);
-    io.to(req.user._id.toString()).emit("receiveMessage", populated);
+    io.to(receiver).emit("receiveMessage", payload);
+    io.to(senderId.toString()).emit("receiveMessage", payload);
 
-    res.status(201).json(populated);
   } catch (error) {
     console.error("sendMessage error:", error);
     res.status(500).json({ message: error.message });
   }
 };
-
 /**
  * Paginated conversation between me and userId.
  * lean + select for speed.

@@ -151,89 +151,78 @@ export const votePoll = async (req, res) => {
   try {
     const { pollId } = req.params;
     const { option } = req.body;
-    if (!["challenger", "challenged"].includes(option)) {
-      return res.status(400).json({ message: "Invalid vote option." });
-    }
-
-    // Load poll metadata
-    const poll = await Poll.findById(pollId)
-      .select("challenger challenged votes")
-      .lean();
-    if (!poll) {
-      return res.status(404).json({ message: "Poll not found." });
-    }
-
     const me = String(req.user._id);
-    // Prevent self-vote
-    if ([poll.challenger, poll.challenged].map(String).includes(me)) {
-      return res.status(400).json({ message: "Cannot vote your own poll." });
-    }
-    // Prevent double-vote
-    if (poll.votes.some((v) => String(v.voter) === me)) {
-      return res.status(400).json({ message: "Already voted." });
+
+    if (!["challenger","challenged"].includes(option)) {
+      return res.status(400).json({ message: "Invalid option." });
     }
 
-    // Append vote
-    const updated = await Poll.findByIdAndUpdate(
-      pollId,
-      { $push: { votes: { voter: req.user._id, option } } },
+    // Atomically push if not self and not already voted
+    const updated = await Poll.findOneAndUpdate(
+      {
+        _id: pollId,
+        challenger: { $ne: me },
+        challenged: { $ne: me },
+        "votes.voter": { $ne: me }
+      },
+      { $push: { votes: { voter: me, option } } },
       { new: true, select: "votes" }
-    )
-      .lean();
+    ).lean();
 
-    res.status(200).json({ message: "Vote counted.", votes: updated.votes });
+    if (!updated) {
+      // Determine reason
+      const exists = await Poll.exists({ _id: pollId });
+      if (!exists) {
+        return res.status(404).json({ message: "Poll not found." });
+      }
+      // Either self‐vote or already voted
+      return res.status(400).json({ message: "Cannot vote (self or duplicate)." });
+    }
+
+    return res.status(200).json({ message: "Vote counted.", votes: updated.votes });
   } catch (err) {
     console.error("votePoll error:", err);
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 };
 
 // Get active, pending, and past polls separately
 export const getPolls = async (req, res) => {
   try {
-    const me = req.user._id;
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const me    = req.user._id;
+    const since = new Date(Date.now() - 24*60*60*1000);
 
-    // Run queries in parallel
     const [active, pending, past] = await Promise.all([
-      Poll.find({
-        status: { $in: ["open", "closed"] },
-        createdAt: { $gte: since }
-      })
-        .populate("challenger challenged", "username profilePic versePoints")
-        .sort({ createdAt: -1 })
+      Poll.find({ status: { $in: ["open","closed"] }, createdAt: { $gte: since } })
+        .populate("challenger challenged","username profilePic versePoints")
         .lean(),
 
       Poll.find({ status: "pending" })
-        .populate("challenger", "username profilePic versePoints")
-        .sort({ createdAt: -1 })
+        .populate("challenger","username profilePic versePoints")
         .lean(),
 
-      Poll.find({
-        $or: [{ challenger: me }, { challenged: me }]
-      })
-        .populate("challenger challenged", "username profilePic versePoints")
-        .sort({ createdAt: -1 })
-        .lean(),
+      Poll.find({ $or: [{ challenger: me }, { challenged: me }] })
+        .populate("challenger challenged","username profilePic versePoints")
+        .lean()
     ]);
 
-    // Annotate hasVoted
-    const annotate = (arr) =>
-      arr.map((p) => ({
+    const annotate = arr =>
+      arr.map(p => ({
         ...p,
-        hasVoted: p.votes.some((v) => String(v.voter) === String(me)),
+        hasVoted: p.votes.some(v => String(v.voter) === String(me))
       }));
 
-    res.status(200).json({
+    return res.status(200).json({
       active: annotate(active),
-      pending: pending,
-      past: annotate(past),
+      pending,
+      past:   annotate(past)
     });
   } catch (err) {
     console.error("getPolls error:", err);
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 };
+    // Annotate hasVoted
 
 // Finalize a poll and award points
 export const finalizePoll = async (req, res) => {

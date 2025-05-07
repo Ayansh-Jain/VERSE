@@ -12,31 +12,37 @@ import { transformUrl } from "../middlewares/Cloudinary.js";  // ensure this pat
 export const createPost = async (req, res) => {
   try {
     const { text } = req.body;
-    const imgUrl = req.file ? req.file.path : null;
+    const img = req.file?.path || null;
+    const userId = req.user._id;
 
-    // Save raw URL
-    const newPost = new Post({
-      postedBy: req.user._id,
-      text,
-      img: imgUrl,
-    });
-    await newPost.save();
+    // 1) Create post
+    const saved = await Post.create({ postedBy: userId, text, img });
 
-    // Add post ID to user's posts array
-    await User.findByIdAndUpdate(req.user._id, {
-      $push: { posts: newPost._id },
-    });
+    // 2) Push into user's posts array
+    await User.updateOne(
+      { _id: userId },
+      { $push: { posts: saved._id } }
+    );
 
-    // Prepare return object
-    const returned = newPost.toObject();
-    if (returned.img) {
-      returned.img = transformUrl(returned.img);
-    }
+    // 3) Build response payload
+    const payload = {
+      _id:       saved._id,
+      postedBy: {
+        _id:        userId,
+        username:   req.user.username,
+        profilePic: req.user.profilePic
+      },
+      text:      saved.text,
+      img:       saved.img ? transformUrl(saved.img) : null,
+      likes:     [],
+      replies:   [],
+      createdAt: saved.createdAt
+    };
 
-    res.status(201).json(returned);
-  } catch (error) {
-    console.error("createPost error:", error);
-    res.status(500).json({ message: error.message });
+    return res.status(201).json(payload);
+  } catch (err) {
+    console.error("createPost error:", err);
+    return res.status(500).json({ message: err.message });
   }
 };
 
@@ -114,29 +120,29 @@ export const getFeed = async (req, res) => {
 export const likePost = async (req, res) => {
   try {
     const postId = req.params.id;
-    const userId = req.user._id;
+    const me     = req.user._id;
 
-    // Fetch post (lean for speed)
-    const post = await Post.findById(postId).lean();
-    if (!post) {
+    // Atomically toggle
+    const updated = await Post.findOneAndUpdate(
+      { _id: postId },
+      me
+        ? { $addToSet: { likes: me } }
+        : { $pull:    { likes: me } },
+      { new: true, select: "likes" }
+    ).lean();
+
+    if (!updated) {
       return res.status(404).json({ message: "Post not found." });
     }
 
-    const hasLiked = post.likes.some((id) => id.toString() === userId.toString());
-    const update = hasLiked
-      ? { $pull:   { likes: userId } }
-      : { $addToSet:{ likes: userId } };
-
-    const updated = await Post.findByIdAndUpdate(postId, update, { new: true })
-      .select("likes")
-      .lean();
-
+    // Did we add or pull?
+    const hasLiked = updated.likes.some(id => String(id) === String(me));
     return res.status(200).json({
-      message: hasLiked ? "Post unliked." : "Post liked.",
-      likes: updated.likes
+      message: hasLiked ? "Post liked." : "Post unliked.",
+      likes:  updated.likes
     });
-  } catch (error) {
-    console.error("likePost error:", error);
-    return res.status(500).json({ message: error.message });
+  } catch (err) {
+    console.error("likePost error:", err);
+    return res.status(500).json({ message: err.message });
   }
 };
