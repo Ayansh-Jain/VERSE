@@ -1,4 +1,3 @@
-// index.js
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -6,15 +5,14 @@ import helmet from "helmet";
 import http from "http";
 import jwt from "jsonwebtoken";
 import { Server as SocketIO } from "socket.io";
+import compression from "compression";
 
 import connectDB from "./db/connectDB.js";
 import userRoutes from "./routes/userRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import pollRoutes from "./routes/pollRoutes.js";
-import authRoutes from "./routes/authRoutes.js"; // NEW
-import passport from "passport"; 
-import compression from "compression";
+import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -24,9 +22,9 @@ const PORT = process.env.PORT || 3000;
 
 // ─── CORS ───────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
-  process.env.CLIENT_URL,                    // e.g. https://verse-frontend.onrender.com
-  `https://www.${new URL(process.env.CLIENT_URL).host}`, 
-  `https://${new URL(process.env.CLIENT_URL).host}`, 
+  process.env.CLIENT_URL,
+  `https://www.${new URL(process.env.CLIENT_URL).host}`,
+  `https://${new URL(process.env.CLIENT_URL).host}`,
 ];
 
 app.use(
@@ -39,20 +37,23 @@ app.use(
     credentials: true,
   })
 );
+
 app.use(compression());
+
 // ─── SECURITY & PARSERS ────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// ─── STATIC UPLOADS ────────────────────────────────────────────────────────────
-
+// ─── CLIENT CACHE CONTROL ──────────────────────────────────────────────────────
 app.use((req, res, next) => {
-     res.set("Cache-Control", "public, max-age=10");
-     next();
-  });
+  // Cache static assets for 10 seconds
+  res.set("Cache-Control", "public, max-age=10");
+  next();
+});
+
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
-app.use("/auth", authRoutes);  
+app.use("/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/messages", messageRoutes);
@@ -71,6 +72,9 @@ const io = new SocketIO(server, {
   },
   transports: ["websocket", "polling"],
 });
+
+// **Expose Socket.IO instance to controllers via `req.app.get("socketio")`**
+app.set("socketio", io);
 
 // Socket authentication via Bearer token
 io.use((socket, next) => {
@@ -104,7 +108,9 @@ io.on("connection", (socket) => {
     io.to(recv).emit("receiveMessage", msg);
 
     const snd = (msg.sender._id || msg.sender).toString();
-    if (snd !== recv) io.to(snd).emit("receiveMessage", msg);
+    if (snd !== recv) {
+      io.to(snd).emit("receiveMessage", msg);
+    }
   });
 
   socket.on("disconnect", () => {
