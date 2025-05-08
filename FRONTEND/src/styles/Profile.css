@@ -181,12 +181,14 @@
   background-color: rgb(74, 74, 22);
   height: 40px;
   border: 1px solid rgb(74, 74, 22);
-  width: auto;
+  width: 50%;
+  align-self: center;
   color: white;
   padding: 5px 10px;
   font-size: 16px;
   border-radius: 4px;
   cursor: pointer;
+  margin-top: 10px;
 }
 /* Verse Points Section */
 .verse-points {
@@ -487,11 +489,6 @@
   margin-top: 15px;
   display: flex;
   gap: 10px;
-}
-.post-view-modal{
-  width:50vw;
-  padding:20px;
-  background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
 }
 .post-view-image{
   width: 100%;
