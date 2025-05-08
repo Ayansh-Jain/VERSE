@@ -3,287 +3,286 @@ import mongoose from "mongoose";
 import Challenge from "../Models/challengeModel.js";
 import User from "../Models/userModel.js";
 
+// ─── 1) Start or match a challenge ─────────────────────────────────────────────
 export const startChallenge = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
     let { skill } = req.body;
-    if (!skill) {
-      return res.status(400).json({ message: "Skill is required." });
-    }
+    if (!skill) return res.status(400).json({ message: "Skill is required." });
     skill = skill.toLowerCase();
 
-    const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json({ message: "Challenger not found." });
-    if (user.versePoints < 10) {
-      return res.status(400).json({ message: "Not enough versePoints to challenge." });
+    const me = req.user._id;
+
+    // 1a) Quick load of versePoints
+    const meData = await User.findById(me).select("versePoints").lean();
+    if (!meData) return res.status(404).json({ message: "User not found." });
+    if (meData.versePoints < 10) {
+      return res.status(400).json({ message: "Not enough versePoints." });
     }
 
-    // Daily limit
+    // 1b) Daily limit
     const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const challengeCount = await Challenge.countDocuments({
-      challenger: user._id,
-      createdAt: { $gte: startOfDay },
+    startOfDay.setHours(0,0,0,0);
+    const used = await Challenge.countDocuments({
+      challenger: me,
+      createdAt: { $gte: startOfDay }
     });
-    const maxChallenges = 3;
-    if (challengeCount >= maxChallenges) {
-      return res.status(400).json({ message: "Maximum 3 challenges per day reached." });
+    if (used >= 3) {
+      return res.status(400).json({ message: "3 challenges per day max." });
     }
+    const attemptsLeft = 3 - used - 1;
 
-    // Find random opponent
-    const searchOpponent = async (range) => {
-      return await User.aggregate([
+    // 1c) Try to match an existing open challenge
+    const since = new Date(Date.now() - 24*60*60*1000);
+    const challengerImage = req.file?.path || "";
+
+    let challenge;
+    await session.withTransaction(async () => {
+      challenge = await Challenge.findOneAndUpdate(
         {
-          $match: {
-            _id: { $ne: new mongoose.Types.ObjectId(user._id) },
-            skills: { $in: [skill] },
-            versePoints: { $gte: user.versePoints - range, $lte: user.versePoints + range },
-          },
+          skill,
+          status:    "open",
+          challenger: { $ne: me },
+          createdAt:  { $gte: since }
         },
-        { $sample: { size: 1 } },
-      ]);
-    };
+        {
+          $set: {
+            opponent:      me,
+            opponentImage: challengerImage,
+            status:        "closed"
+          },
+          $inc: { votesChallenger: 0 } // no-op, just to get updated doc
+        },
+        { new: true, session }
+      )
+      .populate("challenger opponent", "username profilePic versePoints")
+      .lean();
 
-    let range = 10;
-    let opponentResults = await searchOpponent(range);
-    if (opponentResults.length === 0) {
-      range = 20;
-      opponentResults = await searchOpponent(range);
-    }
-    if (opponentResults.length === 0) {
-      return res.status(404).json({ message: "No opponent found. Try again later." });
-    }
-
-    const opponent = await User.findById(opponentResults[0]._id);
-    if (opponent.versePoints < 10) {
-      return res.status(400).json({ message: "Selected opponent doesn't have enough versePoints." });
-    }
-
-    const opponentChallengeCount = await Challenge.countDocuments({
-      opponent: opponent._id,
-      createdAt: { $gte: startOfDay },
+      if (challenge) {
+        // Deduct only from the matcher (you)
+        await User.updateOne({ _id: me }, { $inc: { versePoints: -10 } }, { session });
+        // Also deduct from original challenger
+        await User.updateOne(
+          { _id: challenge.challenger._id },
+          { $inc: { versePoints: -10 } },
+          { session }
+        );
+      } else {
+        // No match: create a new open challenge
+        const [newC] = await Challenge.create(
+          [
+            {
+              skill,
+              challenger:      me,
+              opponent:        null,
+              challengerImage,
+              opponentImage:   "",
+              status:          "open",
+            }
+          ],
+          { session }
+        );
+        challenge = newC.toObject();
+        await User.updateOne({ _id: me }, { $inc: { versePoints: -10 } }, { session });
+      }
     });
-    if (opponentChallengeCount >= maxChallenges) {
-      return res.status(400).json({ message: "Selected opponent has reached maximum challenges for today." });
-    }
+    session.endSession();
 
-    // Use Cloudinary URL if uploaded
-    const challengerImage = req.file ? req.file.path : "";
+    const message = challenge.opponent
+      ? "Challenge matched! You can vote."
+      : "Challenge started. Waiting for opponent.";
 
-    const newChallenge = new Challenge({
-      skill,
-      challenger: user._id,
-      opponent:   opponent._id,
-      challengerImage,
-      opponentImage: "",
-      status: "open",
+    return res.status(challenge.opponent ? 200 : 201).json({
+      message,
+      challenge,
+      attemptsLeft
     });
 
-    // Deduct points
-    user.versePoints     -= 10;
-    opponent.versePoints -= 10;
-    await user.save();
-    await opponent.save();
-    await newChallenge.save();
-
-    const attemptsLeft = maxChallenges - challengeCount - 1;
-    res.status(200).json({
-      message: "Challenge started!",
-      challenge: newChallenge,
-      attemptsLeft,
-    });
-  } catch (error) {
-    console.error("startChallenge error:", error);
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("startChallenge error:", err);
+    return res.status(500).json({ message: err.message });
   }
 };
 
-/**
- * Submit opponent's image/video for a challenge.
- */
+// ─── 2) Submit opponent’s image ────────────────────────────────────────────────
 export const submitOpponentImage = async (req, res) => {
   try {
+    const me = req.user._id;
     const { challengeId } = req.body;
-    const challenge = await Challenge.findById(challengeId);
-    if (!challenge) return res.status(404).json({ message: "Challenge not found" });
+    const img = req.file?.path;
+    if (!img) return res.status(400).json({ message: "No file uploaded." });
 
-    if (challenge.opponent.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Only the opponent can submit their image" });
+    // Atomically set the opponentImage and close
+    const updated = await Challenge.findOneAndUpdate(
+      { _id: challengeId, opponent: me, status: "open" },
+      { $set: { opponentImage: img, status: "closed" } },
+      { new: true }
+    )
+    .populate("challenger opponent", "username profilePic")
+    .lean();
+
+    if (!updated) {
+      const exists = await Challenge.exists({ _id: challengeId });
+      return res.status(exists ? 403 : 404).json({
+        message: exists
+          ? "Not authorized or already submitted."
+          : "Challenge not found."
+      });
     }
 
-    // Use Cloudinary URL
-    if (req.file) {
-      challenge.opponentImage = req.file.path;
-      challenge.status        = "closed";
-      await challenge.save();
-    }
-
-    res.status(200).json({ message: "Image submitted", challenge });
-  } catch (error) {
-    console.error("submitOpponentImage error:", error);
-    res.status(500).json({ message: error.message });
+    return res.status(200).json({ message: "Image submitted.", challenge: updated });
+  } catch (err) {
+    console.error("submitOpponentImage error:", err);
+    return res.status(500).json({ message: err.message });
   }
 };
-/**
- * Vote on a challenge.
- * Earns 1 versePoint per vote (max 10 per day) for the voter.
- * Each user can only vote once per challenge.
- */
+
+// ─── 3) Vote on a challenge ───────────────────────────────────────────────────
 export const voteChallenge = async (req, res) => {
   try {
+    const me = req.user._id;
     const { challengeId, voteFor } = req.body;
-    const userId = req.user._id;
-    
-    const challenge = await Challenge.findById(challengeId);
-    if (!challenge) return res.status(404).json({ message: "Challenge not found" });
-
-    // Check if user has already voted on this challenge
-    const hasVoted = challenge.voters.includes(userId.toString());
-    if (hasVoted) {
-      return res.status(400).json({ message: "You have already voted on this challenge" });
+    if (!["challenger","opponent"].includes(voteFor)) {
+      return res.status(400).json({ message: "Invalid vote option." });
     }
 
-    // Add the vote
-    if (voteFor === "challenger") {
-      challenge.votesChallenger++;
-    } else if (voteFor === "opponent") {
-      challenge.votesOpponent++;
-    } else {
-      return res.status(400).json({ message: "Invalid vote option" });
+    // Atomic update: prevent self-vote and double-vote
+    const update = {};
+    update[voteFor === "challenger" ? "votesChallenger" : "votesOpponent"] = 1;
+    const updated = await Challenge.findOneAndUpdate(
+      {
+        _id: challengeId,
+        status: "closed",
+        voters: { $ne: String(me) },
+        $expr: { $ne: ["$challenger", mongoose.Types.ObjectId(me)] },
+        $expr: { $ne: ["$opponent", mongoose.Types.ObjectId(me)] }
+      },
+      {
+        $inc:  update,
+        $push: { voters: me }
+      },
+      { new: true }
+    ).lean();
+
+    if (!updated) {
+      const exists = await Challenge.exists({ _id: challengeId });
+      return res.status(exists ? 400 : 404).json({
+        message: exists
+          ? "Cannot vote (self or already voted)."
+          : "Challenge not found."
+      });
     }
 
-    // Record that this user has voted
-    challenge.voters.push(userId);
-    await challenge.save();
-
-    // Award vote points (max 10 per day)
-    const user = await User.findById(userId);
+    // Award vote point if under daily limit
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    if (!user.lastVoteDate || new Date(user.lastVoteDate) < today) {
+    today.setHours(0,0,0,0);
+    const user = await User.findById(me).select("versePoints lastVoteDate votePointsEarnedToday");
+    if (!user.lastVoteDate || user.lastVoteDate < today) {
       user.votePointsEarnedToday = 0;
       user.lastVoteDate = new Date();
     }
-    
     if (user.votePointsEarnedToday < 10) {
       user.versePoints += 1;
       user.votePointsEarnedToday += 1;
       await user.save();
     }
 
-    res.status(200).json({ 
-      message: "Vote counted!",
-      challenge,
-      hasVoted: true
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(200).json({ message: "Vote counted.", challenge: updated });
+  } catch (err) {
+    console.error("voteChallenge error:", err);
+    return res.status(500).json({ message: err.message });
   }
 };
 
-/**
- * Get all challenges for the current user.
- * Includes active and past challenges where the user is either challenger or opponent.
- */
+// ─── 4) Fetch active & past challenges ────────────────────────────────────────
 export const getChallenges = async (req, res) => {
   try {
-    const userId = req.user._id;
-    
-    // Get all challenges where the user is either challenger or opponent
-    const challenges = await Challenge.find({
-      $or: [
-        { challenger: userId },
-        { opponent: userId }
-      ]
-    })
-    .populate("challenger", "username profilePic versePoints")
-    .populate("opponent", "username profilePic versePoints")
-    .sort({ createdAt: -1 });
+    const me = String(req.user._id);
+    const since = new Date(Date.now() - 24*60*60*1000);
 
-    // Get challenges from the last 24 hours for active challenges
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
-    // Split challenges into active and past
-    const activePolls = challenges.filter(
-      challenge => challenge.status === "open" || 
-                  (challenge.status === "closed" && new Date(challenge.createdAt) >= twentyFourHoursAgo)
-    );
-    
-    // Past polls include all completed challenges and expired open challenges
-    const pastPolls = challenges.filter(
-      challenge => challenge.status === "closed" && new Date(challenge.createdAt) < twentyFourHoursAgo
-    );
+    // Parallel queries
+    const [active, past] = await Promise.all([
+      Challenge.find({
+        status: { $in: ["open","closed"] },
+        $or: [ { challenger: me }, { opponent: me } ],
+        createdAt: { $gte: since }
+      })
+      .populate("challenger opponent", "username profilePic versePoints")
+      .lean(),
 
-    // Get the user's vote status for each challenge
-    const enhancedActivePolls = activePolls.map(poll => {
-      const hasVoted = poll.voters.includes(userId.toString());
-      return {
-        ...poll.toObject(),
-        hasVoted
-      };
+      Challenge.find({
+        status: "closed",
+        $or: [ { challenger: me }, { opponent: me } ],
+        createdAt: { $lt: since }
+      })
+      .populate("challenger opponent", "username profilePic versePoints")
+      .lean()
+    ]);
+
+    const annotate = arr =>
+      arr.map(c => ({
+        ...c,
+        hasVoted: c.voters.includes(me)
+      }));
+
+    return res.status(200).json({
+      active: annotate(active),
+      past:   annotate(past)
     });
 
-    const enhancedPastPolls = pastPolls.map(poll => {
-      const hasVoted = poll.voters.includes(userId.toString());
-      return {
-        ...poll.toObject(),
-        hasVoted
-      };
-    });
-
-    res.status(200).json({
-      active: enhancedActivePolls,
-      past: enhancedPastPolls
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    console.error("getChallenges error:", err);
+    return res.status(500).json({ message: err.message });
   }
 };
 
-/**
- * Finalize a challenge - determine winner and award 20 versePoints to the winner.
- */
+// ─── 5) Finalize and award points ────────────────────────────────────────────
 export const finalizeChallenge = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
     const { challengeId } = req.params;
-    
-    const challenge = await Challenge.findById(challengeId)
-      .populate("challenger", "username versePoints")
-      .populate("opponent", "username versePoints");
-    
-    if (!challenge) return res.status(404).json({ message: "Challenge not found" });
-    
-    if (challenge.finalized) {
-      return res.status(400).json({ message: "Challenge already finalized" });
-    }
-    
-    if (challenge.status !== "closed") {
-      return res.status(400).json({ message: "Challenge must be closed to finalize" });
-    }
-    
-    // Determine the winner
-    let winnerId = null;
-    if (challenge.votesChallenger > challenge.votesOpponent) {
-      winnerId = challenge.challenger._id;
-    } else if (challenge.votesOpponent > challenge.votesChallenger) {
-      winnerId = challenge.opponent._id;
-    }
-    
-    // Award 20 versePoints to the winner
-    if (winnerId) {
-      const winner = await User.findById(winnerId);
-      winner.versePoints += 20;
-      await winner.save();
-    }
-    
-    challenge.finalized = true;
-    await challenge.save();
-    
-    res.status(200).json({
-      message: "Challenge finalized",
-      challenge
+    let result;
+
+    await session.withTransaction(async () => {
+      const ch = await Challenge.findById(challengeId)
+        .select("status finalized votesChallenger votesOpponent challenger opponent")
+        .lean()
+        .session(session);
+      if (!ch) return res.status(404).json({ message: "Challenge not found." });
+      if (ch.finalized) return res.status(400).json({ message: "Already finalized." });
+      if (ch.status !== "closed") return res.status(400).json({ message: "Still open." });
+
+      // Determine winner
+      let winner = null;
+      if (ch.votesChallenger > ch.votesOpponent) winner = ch.challenger;
+      else if (ch.votesOpponent > ch.votesChallenger) winner = ch.opponent;
+
+      // Award 20 if winner
+      if (winner) {
+        await User.updateOne({ _id: winner }, { $inc: { versePoints: 20 } }, { session });
+      }
+
+      // Mark finalized
+      await Challenge.updateOne(
+        { _id: challengeId },
+        { $set: { finalized: true } },
+        { session }
+      );
+
+      result = await Challenge.findById(challengeId)
+        .populate("challenger opponent", "username versePoints")
+        .lean();
     });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+
+    session.endSession();
+    return res.status(200).json({ message: "Challenge finalized.", challenge: result });
+
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("finalizeChallenge error:", err);
+    return res.status(500).json({ message: err.message });
   }
 };

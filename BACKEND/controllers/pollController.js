@@ -1,12 +1,7 @@
-// controllers/pollController.js
-
 import mongoose from "mongoose";
 import Poll from "../Models/pollModel.js";
 import User from "../Models/userModel.js";
 
-/**
- * Create a new poll challenge or match an existing one.
- */
 export const createPoll = async (req, res) => {
   try {
     let { category } = req.body;
@@ -14,85 +9,88 @@ export const createPoll = async (req, res) => {
       return res.status(400).json({ message: "Category is required." });
     }
     category = category.trim().toLowerCase();
+    const me = req.user._id;
 
-    // Load only versePoints field
-    const user = await User.findById(req.user._id).select("versePoints").lean();
-    if (!user) return res.status(404).json({ message: "User not found." });
-    if (user.versePoints < 10) {
+    // 1) Check creator's balance
+    const meData = await User.findById(me).select("versePoints").lean();
+    if (!meData) return res.status(404).json({ message: "User not found." });
+    if (meData.versePoints < 10) {
       return res.status(400).json({ message: "Not enough versePoints." });
     }
 
-    // Check daily limit
+    // 2) Daily limit
     const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const countToday = await Poll.countDocuments({
-      challenger: req.user._id,
-      createdAt: { $gte: startOfDay },
+    startOfDay.setHours(0,0,0,0);
+    const todayCount = await Poll.countDocuments({
+      challenger: me,
+      createdAt:  { $gte: startOfDay }
     });
-    if (countToday >= 3) {
+    if (todayCount >= 3) {
       return res.status(400).json({ message: "3 polls per day max." });
     }
-    const attemptsLeft = 3 - countToday - 1;
+    const attemptsLeft = 3 - todayCount - 1;
 
-    // Try to match a pending poll from last 24h
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const pending = await Poll.findOne({
+    // 3) Look for a pending poll in the last 24h
+    const since = new Date(Date.now() - 24*60*60*1000);
+    const existing = await Poll.findOne({
       category,
-      status: "pending",
-      challenger: { $ne: req.user._id },
-      createdAt: { $gte: since },
+      status:     "pending",
+      challenger: { $ne: me },
+      createdAt:  { $gte: since }
     })
-      .select("challenger")
-      .lean();
+    .select("challenger")
+    .lean();
 
-    const submission = req.file ? req.file.path : "";
+    const submission = req.file?.path || "";
 
-    if (pending) {
-      // Matched: deduct points from both
-      await User.updateOne({ _id: req.user._id }, { $inc: { versePoints: -10 } });
-      await User.updateOne({ _id: pending.challenger }, { $inc: { versePoints: -10 } });
+    if (existing) {
+      // — MATCHING BRANCH —
+      // Only deduct from the matcher (you)
+      await User.updateOne({ _id: me }, { $inc: { versePoints: -10 } });
 
-      // Update existing poll
+      // Update the existing poll
       const updated = await Poll.findByIdAndUpdate(
-        pending._id,
+        existing._id,
         {
-          challenged: req.user._id,
+          challenged:    me,
           opponentImage: submission,
-          status: submission ? "closed" : "open",
+          status:        submission ? "closed" : "open"
         },
         { new: true }
       )
-        .populate("challenger challenged", "username profilePic versePoints")
-        .lean();
+      .populate("challenger challenged", "username profilePic versePoints")
+      .lean();
 
       return res.status(200).json({
-        message: "Matched! You can vote now.",
-        challenge: updated,
-        attemptsLeft,
+        message:    "Matched! You can vote now.",
+        challenge:  updated,
+        attemptsLeft
       });
     }
 
-    // No match: create new pending poll
-    await User.updateOne({ _id: req.user._id }, { $inc: { versePoints: -10 } });
+    // — CREATION BRANCH —
+    // Deduct 10 from the creator
+    await User.updateOne({ _id: me }, { $inc: { versePoints: -10 } });
 
+    // Create new pending poll
     const newPoll = await Poll.create({
       category,
-      challenger: req.user._id,
+      challenger:           me,
       challengerSubmission: submission,
-      status: "pending",
+      status:               "pending"
     });
 
-    res.status(201).json({
-      message: "Poll created. Waiting for match.",
-      challenge: newPoll,
-      attemptsLeft,
+    return res.status(201).json({
+      message:    "Poll created. Waiting for match.",
+      challenge:  newPoll,
+      attemptsLeft
     });
+
   } catch (err) {
     console.error("createPoll error:", err);
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 };
-
 /**
  * Update the challenged user's submission on a matched poll.
  */

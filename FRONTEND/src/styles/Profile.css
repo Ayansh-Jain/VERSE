@@ -168,7 +168,10 @@
   width: 40px;
   cursor: pointer;
 }
-
+.create-post-form{
+  display:flex;
+  flex-direction: column;
+}
 .profile-top { 
   margin-bottom: 15px;
   display: flex;
@@ -460,6 +463,21 @@
   display: flex;
   gap: 10px;
 }
+.post-view-modal{
+  width:50vw;
+  padding:20px;
+  background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
+}
+.post-view-image{
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+.post-view-video{
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
 /* Mobile View Specific Styles */
 @media (max-width: 768px) {
   .profile-container {
@@ -584,6 +602,10 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+
+  }
+  .post-view-modal{
+    width:90vw;
   }
 }
 
