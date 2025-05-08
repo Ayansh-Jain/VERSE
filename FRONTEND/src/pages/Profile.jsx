@@ -624,7 +624,7 @@ const Profile = () => {
         required
       />
 
-      <button type="submit" disabled={isSubmitting}>
+      <button type="submit" disabled={isSubmitting} className="create-post-submit">
         {isSubmitting ? "Posting..." : "Post"}
       </button>
     </form>

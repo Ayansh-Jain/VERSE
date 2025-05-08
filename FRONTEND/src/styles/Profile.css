@@ -177,6 +177,17 @@
   display: flex;
   gap: 10px;
 }
+.create-post-submit{
+  background-color: rgb(74, 74, 22);
+  height: 40px;
+  border: 1px solid rgb(74, 74, 22);
+  width: auto;
+  color: white;
+  padding: 5px 10px;
+  font-size: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
 /* Verse Points Section */
 .verse-points {
   display: flex;
@@ -391,6 +402,20 @@
 .edit-profile-form label {
   font-weight: 600;
   color: #ddd;
+}
+#caption {
+  padding: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: white;
+}
+#postImage{
+  padding: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: white;
 }
 
 .edit-profile-form input[type="file"],
