@@ -491,12 +491,12 @@
   gap: 10px;
 }
 .post-view-image{
-  width: 100%;
+  width: calc(50vw-40px);
   aspect-ratio: 1;
   object-fit: cover;
 }
 .post-view-video{
-  width: 100%;
+  width: calc(50vw-40px);
   aspect-ratio: 1;
   object-fit: cover;
 }
@@ -626,8 +626,15 @@
     object-fit: cover;
 
   }
-  .post-view-modal{
-    width:90vw;
+  .post-view-image{
+    width: calc(90vw-20px);
+    aspect-ratio: 1;
+    object-fit: cover;
+  }
+  .post-view-video{
+    width: calc(90vw-20px);
+    aspect-ratio: 1;
+    object-fit: cover;
   }
 }
 
