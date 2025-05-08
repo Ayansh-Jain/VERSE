@@ -5,39 +5,53 @@ import { api } from "../api";
 
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
+
 const idOf = (u) => {
   if (typeof u === "string") return u;
-  if (u?._id) return u._id;
-  return u.toString();
+  if (u?._id)              return u._id;
+  // fallback for anything else (including numbers, ObjectIds, etc.)
+  return String(u);
 };
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);    // will include token and normalized ids
+  const [user, setUser]       = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     const token = localStorage.getItem("verse_token");
-    if (token) {
-      api.getCurrentUser()
-        .then((me) => {
-          const normalized = {
-            ...me,
-            token,
-            following: (me.following || []).map(idOf),
-            followers: (me.followers || []).map(idOf),
-          };
-          setUser(normalized);
-          localStorage.setItem("verse_user", JSON.stringify(normalized));
-        })
-        .catch((err) => {
-          console.error("Error fetching current user:", err);
-          localStorage.removeItem("verse_token");
-          localStorage.removeItem("verse_user");
-          setUser(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
+    if (!token) {
       setLoading(false);
+      return;
     }
+
+    api.getCurrentUser()
+      .then((me) => {
+        // remove any null/undefined before mapping
+        const followingClean = Array.isArray(me.following)
+          ? me.following.filter((x) => x != null).map(idOf)
+          : [];
+
+        const followersClean = Array.isArray(me.followers)
+          ? me.followers.filter((x) => x != null).map(idOf)
+          : [];
+
+        const normalized = {
+          ...me,
+          token,
+          following: followingClean,
+          followers: followersClean,
+        };
+
+        setUser(normalized);
+        localStorage.setItem("verse_user", JSON.stringify(normalized));
+      })
+      .catch((err) => {
+        console.error("Error fetching current user:", err);
+        localStorage.removeItem("verse_token");
+        localStorage.removeItem("verse_user");
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const logout = () => {

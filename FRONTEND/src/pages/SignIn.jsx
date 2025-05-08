@@ -1,3 +1,4 @@
+// src/pages/SignIn.jsx
 import { useState } from "react";
 import "../styles/Auth.css";
 import { Link, useNavigate } from "react-router-dom";
@@ -5,19 +6,20 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 
 const OAUTH_BASE = import.meta.env.VITE_API_BASE_URL || "https://verse-48io.onrender.com";
+
 const idOf = (u) => {
   if (typeof u === "string") return u;
   if (u?._id) return u._id;
-  return u.toString();
+  return String(u);
 };
 
 const SignIn = () => {
   const { setUser } = useAuth();
-  const navigate = useNavigate();
+  const navigate      = useNavigate();
 
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData]       = useState({ email: "", password: "" });
   const [errorMessages, setErrorMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]         = useState(false);
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }));
@@ -34,23 +36,33 @@ const SignIn = () => {
     setLoading(true);
     try {
       const response = await api.login({
-        email: formData.email,
+        email:    formData.email,
         password: formData.password,
       });
 
-      const { token, ...apiUser } = response;
+      const { token, following = [], followers = [], ...rest } = response;
+
+      // filter out any null/undefined before mapping to strings
+      const followingClean = Array.isArray(following)
+        ? following.filter((x) => x != null).map(idOf)
+        : [];
+
+      const followersClean = Array.isArray(followers)
+        ? followers.filter((x) => x != null).map(idOf)
+        : [];
+
       const normalized = {
-        ...apiUser,
+        ...rest,
         token,
-        following: (apiUser.following || []).map(idOf),
-        followers: (apiUser.followers || []).map(idOf),
+        following: followingClean,
+        followers: followersClean,
       };
 
       localStorage.setItem("verse_token", token);
       localStorage.setItem("verse_user", JSON.stringify(normalized));
       setUser(normalized);
 
-      navigate(`/profile/${apiUser._id}`);
+      navigate(`/profile/${rest._id}`);
     } catch (err) {
       console.error("SignIn error:", err);
       setErrorMessages([err.message || "Sign in failed."]);
@@ -64,7 +76,7 @@ const SignIn = () => {
       <div className="signup-card">
         <h2 className="signup-title">Sign In</h2>
         <form className="signup-form" onSubmit={handleSubmit}>
-        <div className="form-group">
+          <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
               id="email"
@@ -97,6 +109,7 @@ const SignIn = () => {
               ))}
             </div>
           )}
+
           <button type="submit" className="signup-btn" disabled={loading}>
             {loading ? "Signing in..." : "Sign In"}
           </button>

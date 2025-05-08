@@ -1,3 +1,4 @@
+// src/pages/SignUp.jsx
 import { useState } from "react";
 import "../styles/Auth.css";
 import { Link, useNavigate } from "react-router-dom";
@@ -5,24 +6,25 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 
 const OAUTH_BASE = import.meta.env.VITE_API_BASE_URL || "https://verse-48io.onrender.com";
+
 const idOf = (u) => {
   if (typeof u === "string") return u;
   if (u?._id) return u._id;
-  return u.toString();
+  return String(u);
 };
 
 const SignUp = () => {
   const { setUser } = useAuth();
-  const navigate = useNavigate();
+  const navigate     = useNavigate();
 
   const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    username:       "",
+    email:          "",
+    password:       "",
+    confirmPassword:"",
   });
   const [errorMessages, setErrorMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]           = useState(false);
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -31,15 +33,15 @@ const SignUp = () => {
     e.preventDefault();
     setErrorMessages([]);
 
-    const errors = [];
+    const errs = [];
     if (!formData.username || !formData.email || !formData.password) {
-      errors.push("All fields are required!");
+      errs.push("All fields are required!");
     }
     if (formData.password !== formData.confirmPassword) {
-      errors.push("Passwords do not match!");
+      errs.push("Passwords do not match!");
     }
-    if (errors.length) {
-      setErrorMessages(errors);
+    if (errs.length) {
+      setErrorMessages(errs);
       return;
     }
 
@@ -47,16 +49,25 @@ const SignUp = () => {
     try {
       const response = await api.signup({
         username: formData.username,
-        email: formData.email,
+        email:    formData.email,
         password: formData.password,
       });
 
-      const { token, ...apiUser } = response;
+      const { token, following = [], followers = [], ...apiUser } = response;
+
+      // filter out null/undefined before mapping
+      const followingClean = Array.isArray(following)
+        ? following.filter((x) => x != null).map(idOf)
+        : [];
+      const followersClean = Array.isArray(followers)
+        ? followers.filter((x) => x != null).map(idOf)
+        : [];
+
       const normalized = {
         ...apiUser,
         token,
-        following: (apiUser.following || []).map(idOf),
-        followers: (apiUser.followers || []).map(idOf),
+        following: followingClean,
+        followers: followersClean,
       };
 
       localStorage.setItem("verse_token", token);
@@ -77,7 +88,7 @@ const SignUp = () => {
       <div className="signup-card">
         <h2 className="signup-title">Sign Up</h2>
         <form className="signup-form" onSubmit={handleSubmit}>
-        <div className="form-group">
+          <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
               name="username"
@@ -89,7 +100,6 @@ const SignUp = () => {
               required
             />
           </div>
-
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -102,7 +112,6 @@ const SignUp = () => {
               required
             />
           </div>
-
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <input
@@ -115,7 +124,6 @@ const SignUp = () => {
               required
             />
           </div>
-
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm Password</label>
             <input
@@ -136,6 +144,7 @@ const SignUp = () => {
               ))}
             </div>
           )}
+
           <button type="submit" className="signup-btn" disabled={loading}>
             {loading ? "Signing up..." : "Sign Up"}
           </button>
