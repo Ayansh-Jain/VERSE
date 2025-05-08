@@ -490,13 +490,16 @@
   display: flex;
   gap: 10px;
 }
-.post-view-image{
+.post-view-modal{
   width: calc(50vw-40px);
+}
+.post-view-image{
+  width:100%;
   aspect-ratio: 1;
   object-fit: cover;
 }
 .post-view-video{
-  width: calc(50vw-40px);
+  width:100%;
   aspect-ratio: 1;
   object-fit: cover;
 }
@@ -626,13 +629,16 @@
     object-fit: cover;
 
   }
-  .post-view-image{
+  .post-view-modal{
     width: calc(90vw-20px);
+  }
+  .post-view-image{
+    width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
   }
   .post-view-video{
-    width: calc(90vw-20px);
+    width:100%;
     aspect-ratio: 1;
     object-fit: cover;
   }
