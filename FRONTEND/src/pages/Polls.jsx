@@ -11,11 +11,11 @@ const skillOptions = [
   "Dancing",
   "Painting",
   "Cooking",
-  "Travel"
+  "Rap"
 ];
 
 // Define skills that require video submissions (use lowercase for comparison)
-const videoSkills = ["singing", "dancing", "performance"];
+const videoSkills = ["singing", "dancing", "rap"];
 
 const Polls = () => {
   // pollsData: active (matched) and pending (unmatched) challenges

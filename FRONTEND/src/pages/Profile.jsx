@@ -12,9 +12,9 @@ const availableSkills = [
   "Singing",
   "Dancing",
   "Cooking",
-  "Writing",
-  "Drawing",
-  "Gaming",
+  "Shayari",
+  "Painting",
+  "Rap"
 ];
 
 const Profile = () => {
