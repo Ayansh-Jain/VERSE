@@ -274,6 +274,37 @@
 .carousel-nav button:hover {
   background: #444;
 }
+/* src/styles/Polls.css */
+
+/* …existing rules… */
+
+.submission-video {
+  width: 50%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: 8px;
+  margin: 10px 0;
+  position: relative;
+  background: black;
+}
+
+/* Centered play-overlay icon using a pseudo-element */
+.submission-video::before {
+  content: "▶";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 3rem;
+  color: rgba(255, 255, 255, 0.75);
+  pointer-events: none;
+}
+
+/* Hide the overlay once the video is playing */
+.submission-video[controls][data-playing="true"]::before {
+  display: none;
+}
+
 
 /* Animations */
 @keyframes fadeIn {

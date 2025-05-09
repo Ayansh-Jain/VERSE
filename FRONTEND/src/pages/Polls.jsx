@@ -64,6 +64,11 @@ const Polls = () => {
   const handleFileInputChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+           setError("File must be 50 MB or smaller.");
+           e.target.value = "";
+           return;
+        }
     // If the selected skill requires a video submission, validate accordingly
     if (videoSkills.includes(newPollCategory.trim().toLowerCase())) {
       if (!file.type.startsWith("video/")) {
@@ -437,17 +442,28 @@ const Polls = () => {
                     <span>{activePoll.challenger?.username || "Unknown"}</span>
                   </div>
                   <div className="submission-container">
-                    {activePoll.challengerSubmission ? (
-                      <img
-                        src={activePoll.challengerSubmission}
-                        alt="Poll submission"
-                        className="submission-img watermarked"
-                        onContextMenu={(e) => e.preventDefault()}
-                      />
-                    ) : (
-                      <p>No submission</p>
-                    )}
-                  </div>
+  {activePoll.challengerSubmission?.endsWith(".mp4") ||
+   activePoll.challengerSubmission?.startsWith("blob:") ? (
+    <video
+      src={activePoll.challengerSubmission}
+      controls
+      className="submission-video watermarked"
+      onContextMenu={e => e.preventDefault()}
+      onPlay={e => e.currentTarget.setAttribute("data-playing", "true")}
+      onPause={e => e.currentTarget.removeAttribute("data-playing")}
+      onEnded={e => e.currentTarget.removeAttribute("data-playing")}
+    />
+  ) : activePoll.challengerSubmission ? (
+    <img
+      src={activePoll.challengerSubmission}
+      alt="Poll submission"
+      className="submission-img watermarked"
+      onContextMenu={e => e.preventDefault()}
+    />
+  ) : (
+    <p>No submission</p>
+  )}
+</div>
                   <div className="poll-vote-button">
                     <button 
                       onClick={() => handleVote(activePoll._id, "challenger")}
@@ -469,18 +485,34 @@ const Polls = () => {
                     />
                     <span>{activePoll.challenged?.username || "Unknown"}</span>
                   </div>
-                  <div className="submission-container">
-                    {activePoll.opponentImage ? (
-                      <img
-                        src={activePoll.opponentImage}
-                        alt="Opponent submission"
-                        className="submission-img watermarked"
-                        onContextMenu={(e) => e.preventDefault()}
-                      />
-                    ) : (
-                      <p>Pending submission</p>
-                    )}
-                  </div>
+                  {/* Challenged side */}
+<div className="submission-container">
+  {(
+    // treat blob URLs or .mp4 links as video
+    activePoll.opponentImage?.endsWith(".mp4") ||
+    activePoll.opponentImage?.startsWith("blob:")
+  ) ? (
+    <video
+      src={activePoll.opponentImage}
+      controls
+      className="submission-video watermarked"
+      onContextMenu={e => e.preventDefault()}
+      onPlay={e => e.currentTarget.setAttribute("data-playing", "true")}
+      onPause={e => e.currentTarget.removeAttribute("data-playing")}
+      onEnded={e => e.currentTarget.removeAttribute("data-playing")}
+    />
+  ) : activePoll.opponentImage ? (
+    <img
+      src={activePoll.opponentImage}
+      alt="Opponent submission"
+      className="submission-img watermarked"
+      onContextMenu={e => e.preventDefault()}
+    />
+  ) : (
+    <p>Pending submission</p>
+  )}
+</div>
+
                   <div className="poll-vote-button">
                     <button 
                       onClick={() => handleVote(activePoll._id, "challenged")}

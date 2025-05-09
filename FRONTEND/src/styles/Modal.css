@@ -20,8 +20,8 @@
   color: white;
   font-family: "Montserrat", sans-serif;
   /* **Constrain width** */
-  width: 50vw;         /* always leave a bit of screen-space */
-    /* or whatever maximum you like */
+  max-width: 50vw;         /* always leave a bit of screen-space */
+   width: auto;/* or whatever maximum you like */
   margin: 0;           /* ditch the 20px margin—overlay handles the spacing */
   position: relative;
 }
@@ -44,7 +44,8 @@
 /* Responsive tweaks */
 @media (max-width: 768px) {
   .modal-content {
-    width: 90vw;
+    width:auto;
+    max-width: 90vw;;
     padding: 10px;
     padding-bottom: 20px;
     padding-top: 20px;
