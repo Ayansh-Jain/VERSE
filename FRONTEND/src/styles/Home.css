@@ -8,7 +8,7 @@
 
 .home-container {
   font-family: "Montserrat", sans-serif;
-  background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
+  background: linear-gradient(135deg, rgb(74, 74, 22), #000000);
   color: #fff;
   padding: 20px;
 }
@@ -74,7 +74,7 @@
 }
 
 .cta-button:hover {
-  background-color: #007acc;
+  background-color: rgb(60, 60, 18);
 }
 
 /* Features Section */
