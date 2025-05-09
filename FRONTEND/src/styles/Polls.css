@@ -471,6 +471,12 @@
     object-fit: cover;
     border-radius: 5px;
   }
+  .submission-video {
+    width: 100%;
+    aspect-ratio: 0.7;
+    object-fit: cover;
+    border-radius: 5px;
+  }
   .header-buttons {
     flex-wrap: wrap;
   }

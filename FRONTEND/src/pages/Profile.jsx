@@ -544,7 +544,7 @@ const Profile = () => {
         placeholder="Your organization..."
       />
 
-      <label>Skills:</label>
+      <label>Interests</label>
       <div className="skills-dropdown-container">
         <button
           type="button"
@@ -696,9 +696,9 @@ const Profile = () => {
               </div>
               <div className="bio-section-modal">
                 <p>
-                  {selectedFollowerProfile.organization || "Not specified."}
+                  {selectedFollowerProfile.organization || ""}
                 </p>
-                <p>{selectedFollowerProfile.bio || "No bio added."}</p>
+                <p>{selectedFollowerProfile.bio || ""}</p>
               </div>
               {/* Profile Actions (Message & Share) placed before posts */}
               <div className="profile-actions-modal">

@@ -1,3 +1,6 @@
+import cluster from "cluster";
+import os from "os";
+import path from "path";
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -15,110 +18,102 @@ import pollRoutes from "./routes/pollRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
-connectDB();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+// Cluster setup for multi-core
+if (cluster.isPrimary) {
+  const cpus = os.cpus().length;
+  console.log(`Master process is forking ${cpus} workers`);
+  for (let i = 0; i < cpus; i++) cluster.fork();
+} else {
+  // Worker processes run the server
+  connectDB();
+  const app = express();
+  const PORT = process.env.PORT || 3000;
 
-// ─── CORS ───────────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  `https://www.${new URL(process.env.CLIENT_URL).host}`,
-  `https://${new URL(process.env.CLIENT_URL).host}`,
-];
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(new Error(`CORS policy: origin ${origin} not allowed`));
+  // ─── CORS ────────────────────────────────────────────────────────────────
+  const allowedOrigins = new Set([
+    process.env.CLIENT_URL,
+    `https://www.${new URL(process.env.CLIENT_URL).host}`,
+    `https://${new URL(process.env.CLIENT_URL).host}`,
+  ]);
+  app.use(cors({
+    origin(origin, cb) {
+      if (!origin || allowedOrigins.has(origin)) return cb(null, true);
+      cb(new Error(`CORS policy: ${origin} not allowed`));
     },
     credentials: true,
-  })
-);
+  }));
 
-app.use(compression());
+  // ─── PERFORMANCE ─────────────────────────────────────────────────────────
+  app.use(compression());
 
-// ─── SECURITY & PARSERS ────────────────────────────────────────────────────────
-app.use(helmet());
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true }));
+  // ─── SECURITY & PARSERS ──────────────────────────────────────────────────
+  app.use(helmet());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ extended: true }));
 
-// ─── CLIENT CACHE CONTROL ──────────────────────────────────────────────────────
-app.use((req, res, next) => {
-  // Cache static assets for 10 seconds
-  res.set("Cache-Control", "public, max-age=10");
-  next();
-});
+  // Serve static assets separately with cache control
+  app.use(
+    "/assets",
+    express.static(path.join(process.cwd(), "public/assets"), {
+      maxAge: "10s",
+      etag: false,
+      lastModified: true
+    })
+  );
 
-// ─── ROUTES ───────────────────────────────────────────────────────────────────
-app.use("/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/posts", postRoutes);
-app.use("/api/messages", messageRoutes);
-app.use("/api/polls", pollRoutes);
+  // ─── ROUTES ────────────────────────────────────────────────────────────────
+  app.use("/auth", authRoutes);
+  app.use("/api/users", userRoutes);
+  app.use("/api/posts", postRoutes);
+  app.use("/api/messages", messageRoutes);
+  app.use("/api/polls", pollRoutes);
+  app.get("/api/test", (req, res) => res.status(200).json({ message: "Backend is alive" }));
 
-app.get("/api/test", (req, res) => {
-  res.status(200).json({ message: "Backend is alive" });
-});
-
-// ─── SERVER & SOCKET.IO ────────────────────────────────────────────────────────
-const server = http.createServer(app);
-const io = new SocketIO(server, {
-  cors: {
-    origin: allowedOrigins,
-    credentials: true,
-  },
-  transports: ["websocket", "polling"],
-});
-
-// **Expose Socket.IO instance to controllers via `req.app.get("socketio")`**
-app.set("socketio", io);
-
-// Socket authentication via Bearer token
-io.use((socket, next) => {
-  const token = socket.handshake.auth?.token;
-  if (!token) return next(new Error("Authentication error: No token"));
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return next(new Error("Authentication error: Invalid token"));
-    socket.userId = decoded.id;
-    next();
-  });
-});
-
-const onlineUsers = new Map();
-
-io.on("connection", (socket) => {
-  const userId = socket.userId;
-  onlineUsers.set(userId, socket.id);
-  socket.join(userId.toString());
-  io.emit("user_online", userId);
-
-  socket.on("getOnlineUsers", () => {
-    socket.emit("onlineUsers", Array.from(onlineUsers.keys()));
+  // ─── SERVER & SOCKET.IO ─────────────────────────────────────────────────
+  const server = http.createServer(app);
+  const io = new SocketIO(server, {
+    cors: { origin: Array.from(allowedOrigins), credentials: true },
+    transports: process.env.NODE_ENV === "production" ? ["websocket"] : ["websocket", "polling"],
   });
 
-  socket.on("joinRoom", (roomId) => {
-    socket.join(roomId.toString());
+  app.set("socketio", io);
+
+  // Socket authentication
+  io.use((socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (!token) return next(new Error("Authentication error: No token"));
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+      if (err) return next(new Error("Authentication error: Invalid token"));
+      socket.userId = decoded.id;
+      next();
+    });
   });
 
-  socket.on("sendMessage", (msg) => {
-    const recv = msg.receiver.toString();
-    io.to(recv).emit("receiveMessage", msg);
+  io.on("connection", (socket) => {
+    const userId = socket.userId;
+    socket.join(userId.toString());
+    io.emit("user_online", userId);
 
-    const snd = (msg.sender._id || msg.sender).toString();
-    if (snd !== recv) {
-      io.to(snd).emit("receiveMessage", msg);
-    }
+    socket.on("getOnlineUsers", () => {
+      // derive rooms that are single-socket userIds
+      const online = Array.from(io.sockets.adapter.rooms.keys()).filter(r => io.sockets.adapter.rooms.get(r).has(r));
+      socket.emit("onlineUsers", online);
+    });
+
+    socket.on("joinRoom", (roomId) => socket.join(roomId.toString()));
+
+    socket.on("sendMessage", (msg) => {
+      const recv = msg.receiver.toString();
+      io.to(recv).emit("receiveMessage", msg);
+      const snd = (msg.sender._id || msg.sender).toString();
+      if (snd !== recv) io.to(snd).emit("receiveMessage", msg);
+    });
+
+    socket.on("disconnect", () => {
+      io.emit("user_offline", userId);
+    });
   });
 
-  socket.on("disconnect", () => {
-    onlineUsers.delete(userId);
-    io.emit("user_offline", userId);
-  });
-});
-
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+  server.listen(PORT, () => console.log(`Worker ${process.pid} running on port ${PORT}`));
+}

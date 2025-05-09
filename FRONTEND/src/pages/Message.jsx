@@ -1,11 +1,5 @@
 // src/pages/Message.jsx
-import {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-  useMemo
-} from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { connectSocket, getSocket } from "../socket";
 import Modal from "../components/Modal";
@@ -15,12 +9,12 @@ import { useAuth } from "../context/AuthContext";
 
 const Message = () => {
   const { user, setUser } = useAuth();
+  const navigate = useNavigate();
+  const { userId: routeUserId } = useParams();
 
+  // State
   const [allUsers, setAllUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const { userId: routeUserId } = useParams();
-  const navigate = useNavigate();
   const [selectedUserId, setSelectedUserId] = useState(routeUserId || "");
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -29,127 +23,104 @@ const Message = () => {
   const [error, setError] = useState("");
   const [typingIndicator, setTypingIndicator] = useState("");
   const [onlineUsers, setOnlineUsers] = useState([]);
-
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileModalUser, setProfileModalUser] = useState(null);
-
-  const [isMobileView, setIsMobileView] = useState(
-    window.innerWidth <= 768
-  );
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
   const [showSidebar, setShowSidebar] = useState(true);
 
+  // Refs
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const socketRef = useRef(null);
+  const notificationSound = useRef(new Audio("/sounds/notification.mp3"));
 
-  const scrollToBottom = () =>
+  // Helpers
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
-  // Sync follow/unfollow
-  const handleFollow = async (userIdToFollow) => {
+  // Follow/unfollow handler
+  const handleFollow = useCallback(async (userIdToFollow) => {
     try {
-      const resData = await api.followUser(userIdToFollow);
-      const isNowFollowing =
-        resData.message === "Followed successfully.";
-      const updatedUser = { ...user };
-      if (isNowFollowing) {
-        if (!updatedUser.following.includes(userIdToFollow)) {
-          updatedUser.following.push(userIdToFollow);
-        }
-      } else {
-        updatedUser.following = updatedUser.following.filter(
-          (id) => id !== userIdToFollow
-        );
-      }
-      setUser(updatedUser);
-      localStorage.setItem(
-        "verse_user",
-        JSON.stringify(updatedUser)
-      );
-      setAllUsers((prev) =>
-        prev.map((u) =>
-          u._id === userIdToFollow ? { ...u } : u
-        )
-      );
+      const res = await api.followUser(userIdToFollow);
+      const nowFollowing = res.message === "Followed successfully.";
+      setUser((prev) => {
+        const updated = { ...prev };
+        if (nowFollowing) updated.following = [...new Set([...updated.following, userIdToFollow])];
+        else updated.following = updated.following.filter((id) => id !== userIdToFollow);
+        localStorage.setItem("verse_user", JSON.stringify(updated));
+        return updated;
+      });
+      setAllUsers((prev) => prev.map((u) => (u._id === userIdToFollow ? { ...u } : u)));
     } catch (e) {
       console.error("Error toggling follow:", e);
     }
-  };
+  }, [setUser]);
 
-  // ─── SOCKET.IO SETUP ──────────────────────────────────────────────────────────
+  // Socket setup
   useEffect(() => {
     if (!user?._id) return;
-
     connectSocket();
     const socket = getSocket();
-    if (!socket) return;
-
+    socketRef.current = socket;
     socket.emit("joinRoom", user._id);
     socket.emit("getOnlineUsers");
 
-    socket.on("onlineUsers", (list) => setOnlineUsers(list));
-    socket.on("user_online", (id) =>
-      setOnlineUsers((prev) =>
-        prev.includes(id) ? prev : [...prev, id]
-      )
-    );
-    socket.on("user_offline", (id) =>
-      setOnlineUsers((prev) => prev.filter((u) => u !== id))
-    );
+    socket.on("onlineUsers", setOnlineUsers);
+    socket.on("user_online", (id) => setOnlineUsers((prev) => prev.includes(id) ? prev : [...prev, id]));
+    socket.on("user_offline", (id) => setOnlineUsers((prev) => prev.filter((u) => u !== id)));
 
     return () => {
-      socket.off("onlineUsers");
-      socket.off("user_online");
-      socket.off("user_offline");
+      socket.off();
     };
   }, [user?._id]);
 
-  // ─── LOAD ALL USERS ──────────────────────────────────────────────────────────
+  // Load all users
   useEffect(() => {
-    (async () => {
-      try {
-        const users = await api.getAllUsers();
-        setAllUsers(Array.isArray(users) ? users : []);
-      } catch (e) {
-        console.error("Error loading users:", e);
-      }
-    })();
+    api.getAllUsers()
+      .then((users) => setAllUsers(Array.isArray(users) ? users : []))
+      .catch((e) => console.error("Error loading users:", e));
   }, []);
 
-  // ─── FILTER & SORT ──────────────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    return allUsers
-      .filter(
-        (u) =>
-          u.username
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) &&
-          u._id !== user._id
-      )
+  // Filtered and sorted users
+  const filtered = useMemo(
+    () => allUsers
+      .filter((u) => u.username.toLowerCase().includes(searchQuery.toLowerCase()) && u._id !== user._id)
       .sort((a, b) => {
-        const aF = user.following.includes(a._id) ? 0 : 1;
-        const bF = user.following.includes(b._id) ? 0 : 1;
-        if (aF !== bF) return aF - bF;
+        const af = user.following.includes(a._id) ? 0 : 1;
+        const bf = user.following.includes(b._id) ? 0 : 1;
+        if (af !== bf) return af - bf;
         return a.username.localeCompare(b.username);
-      });
-  }, [allUsers, searchQuery, user.following, user._id]);
-
-  const followedUsers = filtered.filter((u) =>
-    user.following.includes(u._id)
-  );
-  const otherUsers = filtered.filter(
-    (u) => !user.following.includes(u._id)
+      }),
+    [allUsers, searchQuery, user.following, user._id]
   );
 
-  // ─── SELECT CHAT ─────────────────────────────────────────────────────────────
-  const openChat = (uid) => {
-    if (uid === user._id) return;
-    setSelectedUserId(uid);
-    navigate(`/message/${uid}`);
-    if (isMobileView) setShowSidebar(false);
-  };
-  const backToList = () => setShowSidebar(true);
+  const followedUsers = useMemo(
+    () => filtered.filter((u) => user.following.includes(u._id)),
+    [filtered, user.following]
+  );
 
-  // ─── FETCH MESSAGES ─────────────────────────────────────────────────────────
+  const otherUsers = useMemo(
+    () => filtered.filter((u) => !user.following.includes(u._id)),
+    [filtered, user.following]
+  );
+
+  // Select chat
+  const openChat = useCallback(
+    (uid) => {
+      if (uid === user._id) return;
+      setSelectedUserId(uid);
+      navigate(`/message/${uid}`);
+      if (isMobileView) setShowSidebar(false);
+    },
+    [user._id, navigate, isMobileView]
+  );
+
+  const backToList = useCallback(() => {
+    setShowSidebar(true);
+  }, []);
+
+  // Fetch messages
   const fetchMessages = useCallback(async () => {
     if (!selectedUserId) return;
     try {
@@ -157,32 +128,26 @@ const Message = () => {
       setMessages(Array.isArray(data) ? data : []);
       scrollToBottom();
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching messages:", e);
       setError(e.message);
     }
-  }, [selectedUserId]);
+  }, [selectedUserId, scrollToBottom]);
 
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages]);
 
-  // ─── SOCKET LISTENERS ───────────────────────────────────────────────────────
+  // Socket listeners for messages
   useEffect(() => {
-    const socket = getSocket();
+    const socket = socketRef.current;
     if (!socket) return;
 
     const handleReceive = (msg) => {
       const sid = msg.sender?._id || msg.sender;
-      if (
-        sid === selectedUserId ||
-        msg.receiver === selectedUserId
-      ) {
-        setMessages((prev) =>
-          prev.some((m) => m._id === msg._id)
-            ? prev
-            : [...prev, msg]
-        );
+      if (sid === selectedUserId || msg.receiver === selectedUserId) {
+        setMessages((prev) => (prev.some((m) => m._id === msg._id) ? prev : [...prev, msg]));
         scrollToBottom();
+        notificationSound.current.play().catch(() => {});
         if (msg.receiver === user._id && !msg.read) {
           socket.emit("markConversationRead", selectedUserId);
         }
@@ -190,8 +155,7 @@ const Message = () => {
     };
 
     const handleTyping = ({ from }) => {
-      if (from === selectedUserId)
-        setTypingIndicator("Typing...");
+      if (from === selectedUserId) setTypingIndicator("Typing...");
     };
     const handleStop = ({ from }) => {
       if (from === selectedUserId) setTypingIndicator("");
@@ -206,21 +170,21 @@ const Message = () => {
       socket.off("typing", handleTyping);
       socket.off("stopTyping", handleStop);
     };
-  }, [selectedUserId, user._id]);
+  }, [selectedUserId, scrollToBottom, user._id]);
 
-  // ─── INPUT HANDLERS ─────────────────────────────────────────────────────────
-  const onInput = (e) => {
+  // Input handlers
+  const onInput = useCallback((e) => {
     setNewMessage(e.target.value);
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit("typing", { to: selectedUserId });
+    const socket = socketRef.current;
+    socket?.emit("typing", { to: selectedUserId });
     clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      socket.emit("stopTyping", { to: selectedUserId });
-    }, 800);
-  };
+    typingTimeoutRef.current = setTimeout(
+      () => socket?.emit("stopTyping", { to: selectedUserId }),
+      800
+    );
+  }, [selectedUserId]);
 
-  const onAttach = (e) => {
+  const onAttach = useCallback((e) => {
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
@@ -229,14 +193,14 @@ const Message = () => {
     }
     setAttachment(file);
     setAttachmentPreview(URL.createObjectURL(file));
-  };
-  const cancelAttachment = () => {
+  }, []);
+
+  const cancelAttachment = useCallback(() => {
     setAttachment(null);
     setAttachmentPreview(null);
-  };
+  }, []);
 
-  // ─── SEND MESSAGE ──────────────────────────────────────────────────────────
-  const onSend = async (e) => {
+  const onSend = useCallback(async (e) => {
     e.preventDefault();
     if (!selectedUserId || (!newMessage && !attachment)) return;
 
@@ -250,12 +214,12 @@ const Message = () => {
       setNewMessage("");
       cancelAttachment();
     } catch (e) {
-      console.error(e);
+      console.error("Error sending message:", e);
       setError(e.message);
     }
-  };
+  }, [selectedUserId, newMessage, attachment, cancelAttachment]);
 
-  // ─── RESIZE HANDLER ─────────────────────────────────────────────────────────
+  // Resize handler
   useEffect(() => {
     const onResize = () => {
       const mobile = window.innerWidth <= 768;
@@ -263,23 +227,24 @@ const Message = () => {
       if (!mobile) setShowSidebar(true);
     };
     window.addEventListener("resize", onResize);
-    return () =>
-      window.removeEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // ─── PROFILE MODAL ──────────────────────────────────────────────────────────
-  const openProfileModal = async () => {
+  // Profile modal
+  const openProfileModal = useCallback(async () => {
     try {
       const u = await api.getUserById(selectedUserId);
       setProfileModalUser(u);
       setShowProfileModal(true);
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching user for modal:", e);
     }
-  };
+  }, [selectedUserId]);
 
-  const chatPartner =
-    allUsers.find((u) => u._id === selectedUserId) || {};
+  const chatPartner = useMemo(
+    () => allUsers.find((u) => u._id === selectedUserId) || {},
+    [allUsers, selectedUserId]
+  );
 
   return (
     <div className="messages-container">
@@ -569,4 +534,4 @@ const Message = () => {
   );
 };
 
-export default Message;
+export default React.memo(Message);
