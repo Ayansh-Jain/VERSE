@@ -185,18 +185,10 @@ const Feed = () => {
   }, [posts]);
 
   // Toggle play/pause on video click
-  const togglePlay = (id) => {
-    const video = videoRefs.current[id];
-    if (!video) return;
-    video.paused ? video.play() : video.pause();
-  };
+
 
   // Toggle sound on/off
-  const toggleSound = (id) => {
-    const video = videoRefs.current[id];
-    if (!video) return;
-    video.muted = !video.muted;
-  };
+
 
   return (
     <div className="feed-container">
@@ -237,14 +229,10 @@ const Feed = () => {
                       ref={(el) => (videoRefs.current[post._id] = el)}
                       src={post.img}
                       className="post-video"
-                      onClick={() => togglePlay(post._id)}
+                      controls
+                      loop
                     />
-                    <button
-                      className="sound-toggle"
-                      onClick={() => toggleSound(post._id)}
-                    >
-                      {videoRefs.current[post._id]?.muted ? "🔇" : "🔊"}
-                    </button>
+                    
                   </div>
                 ) : (
                   <img

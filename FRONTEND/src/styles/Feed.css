@@ -69,14 +69,17 @@
 
 .post-image img {
   width:auto;
-  aspect-ratio: 2/3;
+  aspect-ratio:1;
 }
-.post-image video {
+.video-container {
   width: auto;
-  aspect-ratio: 2/3;
+  height: fit-content;
+}
+.post-video {
+  width:auto;
+  aspect-ratio: 0.7;
   object-fit: cover;
 }
-
 .post-actions {
   padding: 10px;
   display: flex;
@@ -249,17 +252,6 @@
   /* Keep existing other styles */
   .video-container {
     position: relative;
-  }
-  .sound-toggle {
-    position: absolute;
-    bottom: 8px;
-    left: 8px;
-    background: rgba(0,0,0,0.5);
-    border: none;
-    color: white;
-    padding: 4px;
-    border-radius: 4px;
-    cursor: pointer;
   }
   .like-button.animate {
     animation: pop 0.6s ease-out;

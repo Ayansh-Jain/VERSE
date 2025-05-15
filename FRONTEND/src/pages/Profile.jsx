@@ -543,8 +543,6 @@ const Profile = () => {
         onChange={(e) => setNewOrganization(e.target.value)}
         placeholder="Your organization..."
       />
-
-      <label>Interests</label>
       <div className="skills-dropdown-container">
         <button
           type="button"
