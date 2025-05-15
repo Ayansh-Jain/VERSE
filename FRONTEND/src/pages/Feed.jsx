@@ -231,6 +231,7 @@ const Feed = () => {
                       className="post-video"
                       controls
                       loop
+                      muted={false}
                     />
                     
                   </div>

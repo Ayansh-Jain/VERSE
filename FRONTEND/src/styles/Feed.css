@@ -77,7 +77,7 @@
 }
 .post-video {
   width:auto;
-  aspect-ratio: 0.7;
+  aspect-ratio: 0.8;
   object-fit: cover;
 }
 .post-actions {
