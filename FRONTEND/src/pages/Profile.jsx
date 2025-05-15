@@ -335,7 +335,7 @@ const Profile = () => {
                 <div key={`${post._id}-${i}`} className="post-minimized" onClick={() => openPostModal(post)}>
                   {post.img ? (
                     isVideo(post.img) ? (
-                      <video src={post.img} preload="metadata" className="post-thumbnail" muted playsInline/>
+                      <video src={post.img} preload="metadata" className="post-thumbnail"/>
                     ) : (
                       <img src={post.img} alt="Post thumbnail" className="post-thumbnail" />
                     )

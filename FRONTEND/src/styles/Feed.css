@@ -69,7 +69,12 @@
 
 .post-image img {
   width:auto;
-  height:300px;
+  aspect-ratio: 2/3;
+}
+.post-image video {
+  width: auto;
+  aspect-ratio: 2/3;
+  object-fit: cover;
 }
 
 .post-actions {
